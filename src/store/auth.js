@@ -8,14 +8,16 @@ const useAuthStore = create(
       user: null,
       token: null,
       isAuthenticated: false,
+      onboardingstatus: null,
       isLoading: false,
 
       // Set user data and token
-      setAuth: (userData, token) => {
+      setAuth: (userData, token,onboardingstatus) => {
         set({
           user: userData,
           token: token,
           isAuthenticated: true,
+          onboardingstatus:onboardingstatus,
           isLoading: false
         });
       },
@@ -26,6 +28,7 @@ const useAuthStore = create(
           user: null,
           token: null,
           isAuthenticated: false,
+          onboardingstatus: null,
           isLoading: false
         });
       },

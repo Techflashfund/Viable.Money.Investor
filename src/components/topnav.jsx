@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import useAuthStore from '@/store/auth';
 import { 
   TrendingUp, 
   Target, 
@@ -45,14 +46,17 @@ const UserTopNav = ({ activeView, setActiveView }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navRef = useRef(null);
   
-  // User data
-  const user = {
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com'
-  };
+  // Get user data from auth store
+  const { user, onboardingstatus } = useAuthStore();
+  
+  // Check if onboarding is needed
+  const needsOnboarding = !onboardingstatus || onboardingstatus === false;
 
   const userDisplayInfo = useMemo(() => {
+    if (!user) {
+      return { email: '', name: 'User', initial: 'U', shortName: 'User' };
+    }
+    
     const email = user.email || '';
     const name = user.firstName && user.lastName 
       ? `${user.firstName} ${user.lastName}` 
@@ -99,16 +103,21 @@ const UserTopNav = ({ activeView, setActiveView }) => {
     alert('Logout functionality - would redirect to login page');
   }, []);
 
+  const handleOnboardingClick = useCallback(() => {
+    window.location.href = '/onboarding';
+  }, []);
+
   return (
     <div className="w-full">
       {/* Desktop Header */}
       <div className="hidden lg:flex items-center justify-between px-6 py-4">
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-600 rounded-lg flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-white" />
-          </div>
-          <div className="font-bold text-xl text-gray-900">InvestSmart</div>
+          <img 
+            src="/logo.png" 
+            alt="InvestFund Logo" 
+            className="h-16 object-contain"
+          />
         </div>
 
         {/* Main Navigation */}
@@ -139,6 +148,19 @@ const UserTopNav = ({ activeView, setActiveView }) => {
             );
           })}
         </nav>
+
+        {/* Onboarding Notification */}
+        {needsOnboarding && (
+          <div 
+            onClick={handleOnboardingClick}
+            className="cursor-pointer mx-4 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors duration-200"
+          >
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-amber-700">Complete your onboarding</span>
+            </div>
+          </div>
+        )}
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-3">
@@ -229,6 +251,19 @@ const UserTopNav = ({ activeView, setActiveView }) => {
             </DropdownMenu>
           </div>
         </div>
+
+        {/* Mobile Onboarding Notification */}
+        {needsOnboarding && (
+          <div 
+            onClick={handleOnboardingClick}
+            className="cursor-pointer mx-4 mb-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors duration-200"
+          >
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-medium text-amber-700">Complete your onboarding</span>
+            </div>
+          </div>
+        )}
 
         {/* Mobile Navigation */}
         <div className="border-t border-gray-200">

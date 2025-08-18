@@ -13,6 +13,9 @@ import {
   BarChart3
 } from 'lucide-react';
 
+// Import the external Explore component
+import Explore from './explore';
+
 // Sub Navigation Component for Portfolio
 const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransitioning }) => {
   // User data for welcome message
@@ -127,7 +130,7 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
 };
 
 // Portfolio Overview Component
-const PortfolioOverview = () => {
+const PortfolioOverview = ({ onNavigateToExplore }) => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
       {/* Portfolio Summary Cards */}
@@ -255,7 +258,10 @@ const PortfolioOverview = () => {
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Start New SIP</h4>
                 <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors">
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
+                  onClick={() => onNavigateToExplore('sip')}
+                >
                   Start SIP
                 </Button>
               </div>
@@ -271,7 +277,10 @@ const PortfolioOverview = () => {
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
                 <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors">
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
+                  onClick={() => onNavigateToExplore('lumpsum')}
+                >
                   Invest Now
                 </Button>
               </div>
@@ -514,8 +523,10 @@ const PortfolioAnalytics = () => {
 
 // Main Portfolio Component with Sub-Navigation
 const Portfolio = () => {
+  const [activeView, setActiveView] = useState('portfolio'); // 'portfolio' or 'explore'
   const [activeSubView, setActiveSubView] = useState('overview');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [investmentType, setInvestmentType] = useState(null); // 'sip' or 'lumpsum'
 
   const subMenuItems = useMemo(() => [
     {
@@ -536,15 +547,25 @@ const Portfolio = () => {
     setTimeout(() => setIsTransitioning(false), 300);
   }, []);
 
+  const handleNavigateToExplore = useCallback((type) => {
+    setInvestmentType(type);
+    setActiveView('explore');
+  }, []);
+
+  const handleBackToPortfolio = useCallback(() => {
+    setActiveView('portfolio');
+    setInvestmentType(null);
+  }, []);
+
   const renderSubContent = useCallback(() => {
     const content = (() => {
       switch (activeSubView) {
         case 'overview':
-          return <PortfolioOverview />;
+          return <PortfolioOverview onNavigateToExplore={handleNavigateToExplore} />;
         case 'analytics':
           return <PortfolioAnalytics />;
         default:
-          return <PortfolioOverview />;
+          return <PortfolioOverview onNavigateToExplore={handleNavigateToExplore} />;
       }
     })();
 
@@ -553,8 +574,29 @@ const Portfolio = () => {
         {content}
       </div>
     );
-  }, [activeSubView, isTransitioning]);
+  }, [activeSubView, isTransitioning, handleNavigateToExplore]);
 
+  // Render Explore component if activeView is 'explore'
+  if (activeView === 'explore') {
+    return (
+      <div className="space-y-6 w-full">
+        <div className="min-h-[600px] relative overflow-hidden">
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0" style={{
+              backgroundImage: `radial-gradient(circle at 1px 1px, rgb(37 99 235) 1px, transparent 0)`,
+              backgroundSize: '20px 20px'
+            }}></div>
+          </div>
+          
+          <div className="relative z-10">
+            <Explore onBack={handleBackToPortfolio} investmentType={investmentType} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render Portfolio component (default)
   return (
     <div className="space-y-6 w-full">
       <SubNavigation 
