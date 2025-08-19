@@ -25,7 +25,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen  font-sans">
       {/* Top Navigation - Always Visible */}
       <UserTopNav 
         activeView={activeView}

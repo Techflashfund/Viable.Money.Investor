@@ -18,23 +18,6 @@ import Explore from './explore';
 
 // Sub Navigation Component for Portfolio
 const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransitioning }) => {
-  // User data for welcome message
-  const user = {
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com'
-  };
-
-  const userDisplayInfo = useMemo(() => {
-    const email = user.email || '';
-    const name = user.firstName && user.lastName 
-      ? `${user.firstName} ${user.lastName}` 
-      : email.split('@')[0] || 'User';
-    const shortName = name.length > 12 ? name.substring(0, 12) + '...' : name;
-    
-    return { email, name, shortName };
-  }, [user]);
-
   const handleSubViewClick = useCallback((itemId) => {
     if (activeSubView !== itemId) {
       setActiveSubView(itemId);
@@ -44,20 +27,8 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
   return (
     <div className="border-b border-gray-200 w-full relative">
       {/* Desktop Sub Navigation */}
-      <div className="hidden md:flex items-center justify-between w-full px-4 lg:px-8 relative">
-        {/* Welcome Message - Left Side */}
-        <div className="flex items-center space-x-4">
-          <div>
-            <h1 className="text-lg font-semibold text-gray-900">
-              Welcome back, {userDisplayInfo.shortName}
-            </h1>
-            <p className="text-gray-500 text-xs">
-              Track your investments and achieve your financial goals
-            </p>
-          </div>
-        </div>
-
-        {/* Sub Navigation - Right Side */}
+      <div className="hidden md:flex items-center justify-start w-full px-4 lg:px-8 relative">
+        {/* Sub Navigation - Left Side */}
         <div className="flex items-center space-x-12 relative">
           {subMenuItems.map((item) => {
             const isActive = activeSubView === item.id;
@@ -89,16 +60,6 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
 
       {/* Mobile Sub Navigation */}
       <div className="md:hidden px-4 py-2">
-        {/* Welcome Message - Mobile */}
-        <div className="mb-3">
-          <h1 className="text-base font-semibold text-gray-900">
-            Welcome back, {userDisplayInfo.shortName}
-          </h1>
-          <p className="text-gray-500 text-xs">
-            Track your investments and achieve your financial goals
-          </p>
-        </div>
-        
         <div className="flex space-x-2 overflow-x-auto">
           {subMenuItems.map((item) => {
             const isActive = activeSubView === item.id;
@@ -194,7 +155,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
       {/* Charts and Quick Actions */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
         {/* Portfolio Performance Chart */}
-        <div className="xl:col-span-2 backdrop-blur-sm rounded-xl border border-blue-200/40 p-4 lg:p-6 shadow-sm hover:shadow-md transition-shadow">
+        <div className="xl:col-span-2  p-4 lg:p-6  ">
           <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between mb-4 lg:mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Portfolio Performance</h3>
             <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
@@ -250,7 +211,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
         {/* Quick Actions - Responsive */}
         <div className="space-y-4">
           {/* Start SIP */}
-          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow rounded-xl">
+          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow ">
             <div className="flex items-start space-x-3 lg:space-x-4">
               <div className="w-10 h-10 lg:w-12 lg:h-12 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
                 <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
@@ -269,7 +230,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
           </div>
 
           {/* One-time Investment */}
-          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow rounded-xl">
+          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow ">
             <div className="flex items-start space-x-3 lg:space-x-4">
               <div className="w-10 h-10 lg:w-12 lg:h-12 flex border border-blue-300 rounded-full items-center justify-center flex-shrink-0">
                 <Banknote className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
@@ -290,7 +251,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
       </div>
 
       {/* Holdings - Responsive Table */}
-      <div className="backdrop-blur-sm rounded-3xl border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+      <div className="backdrop-blur-sm  border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
         <div className="p-4 lg:p-6 border-b border-blue-100/40">
           <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Your Holdings</h3>
