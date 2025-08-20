@@ -6,7 +6,7 @@ import {
   Wallet, 
   Calendar,
   Banknote,
-  DollarSign,
+  IndianRupee,
   Filter,
   MoreHorizontal,
   PieChart,
@@ -101,7 +101,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
         </div>
         
         {/* Responsive Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
           {/* Total Portfolio Value */}
           <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
             <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
@@ -110,7 +110,6 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
             <div className="pl-6 lg:pl-8">
               <p className="text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">₹2,45,680</p>
               <p className="text-sm text-gray-600 truncate">Total Portfolio Value</p>
-              <p className="text-xs text-green-600 mt-1 truncate">↑ 12.5% overall returns</p>
             </div>
           </div>
           
@@ -122,41 +121,26 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
             <div className="pl-6 lg:pl-8">
               <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹8,500</p>
               <p className="text-sm text-gray-600 truncate">Monthly SIP Amount</p>
-              <p className="text-xs text-black mt-1 truncate">5 active SIPs</p>
-            </div>
-          </div>
-          
-          {/* Today's Gain/Loss */}
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-            </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-green-600 truncate">+₹2,340</p>
-              <p className="text-sm text-gray-600 truncate">Today's Gain</p>
-              <p className="text-xs text-green-600 mt-1 truncate">+0.95% today</p>
             </div>
           </div>
           
           {/* Invested Amount */}
           <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
             <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <DollarSign className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
+              <IndianRupee className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
             </div>
             <div className="pl-6 lg:pl-8">
               <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹2,18,450</p>
               <p className="text-sm text-gray-600 truncate">Total Invested</p>
-              <p className="text-xs text-black mt-1 truncate">XIRR: 15.2%</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Charts and Quick Actions */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
-        {/* Portfolio Performance Chart */}
-        <div className="xl:col-span-2  p-4 lg:p-6  ">
-          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between mb-4 lg:mb-6">
+      {/* Portfolio Performance Chart */}
+      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow mb-6 lg:mb-8">
+        <div className="p-4 lg:p-6 border-b border-blue-100/40">
+          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
             <h3 className="text-lg font-semibold text-gray-900">Portfolio Performance</h3>
             <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
               <div className="flex flex-wrap items-center gap-4">
@@ -172,7 +156,9 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
               <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40 w-fit">6M</Button>
             </div>
           </div>
-          
+        </div>
+        
+        <div className="p-4 lg:p-6">
           <div className="mb-4">
             <p className="text-sm text-gray-600">As of today</p>
             <p className="text-xl lg:text-2xl font-bold text-gray-900">₹2,45,680</p>
@@ -205,47 +191,6 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
               <text x="430" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Nov</text>
               <text x="500" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Dec</text>
             </svg>
-          </div>
-        </div>
-
-        {/* Quick Actions - Responsive */}
-        <div className="space-y-4">
-          {/* Start SIP */}
-          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow ">
-            <div className="flex items-start space-x-3 lg:space-x-4">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Start New SIP</h4>
-                <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
-                  onClick={() => onNavigateToExplore('sip')}
-                >
-                  Start SIP
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* One-time Investment */}
-          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow ">
-            <div className="flex items-start space-x-3 lg:space-x-4">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 flex border border-blue-300 rounded-full items-center justify-center flex-shrink-0">
-                <Banknote className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
-                <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
-                  onClick={() => onNavigateToExplore('lumpsum')}
-                >
-                  Invest Now
-                </Button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -358,122 +303,122 @@ const PortfolioAnalytics = () => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
       {/* Performance Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-        <div className="bg-white border border-blue-200/40 p-4 lg:p-6 rounded-xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5 text-blue-600" />
-            </div>
-            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">+12.5%</span>
-          </div>
-          <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">15.2%</h3>
-          <p className="text-sm text-gray-600">Annual Returns (XIRR)</p>
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
+        <div className="absolute -top-3 left-4 sm:left-8 bg-white px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+          Performance Metrics
         </div>
-
-        <div className="bg-white border border-blue-200/40 p-4 lg:p-6 rounded-xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-black/10 rounded-full flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 text-black" />
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
             </div>
-            <span className="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">Low</span>
-          </div>
-          <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">8.4%</h3>
-          <p className="text-sm text-gray-600">Portfolio Volatility</p>
-        </div>
-
-        <div className="bg-white border border-blue-200/40 p-4 lg:p-6 rounded-xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-black/10 rounded-full flex items-center justify-center">
-              <Target className="w-4 h-4 lg:w-5 lg:h-5 text-black" />
+            <div className="pl-6 lg:pl-8">
+              <p className="text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">15.2%</p>
+              <p className="text-sm text-gray-600 truncate">Annual Returns (XIRR)</p>
             </div>
-            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">Excellent</span>
           </div>
-          <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">1.82</h3>
-          <p className="text-sm text-gray-600">Sharpe Ratio</p>
-        </div>
 
-        <div className="bg-white border border-blue-200/40 p-4 lg:p-6 rounded-xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 lg:w-5 lg:h-5 text-orange-600 transform rotate-180" />
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
             </div>
-            <span className="bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded-full">-5.2%</span>
+            <div className="pl-6 lg:pl-8">
+              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">8.4%</p>
+              <p className="text-sm text-gray-600 truncate">Portfolio Volatility</p>
+            </div>
           </div>
-          <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-1">-8.5%</h3>
-          <p className="text-sm text-gray-600">Max Drawdown</p>
+
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <Target className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
+            </div>
+            <div className="pl-6 lg:pl-8">
+              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">1.82</p>
+              <p className="text-sm text-gray-600 truncate">Sharpe Ratio</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Asset Allocation */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        <div className="bg-white border border-blue-200/40 p-4 lg:p-6 rounded-xl shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 lg:mb-6">Asset Allocation</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
-                <span className="text-sm text-gray-700">Equity Funds</span>
+        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+          <div className="p-4 lg:p-6 border-b border-blue-100/40">
+            <h3 className="text-lg font-semibold text-gray-900">Asset Allocation</h3>
+          </div>
+          <div className="p-4 lg:p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-sm text-gray-700">Equity Funds</span>
+                </div>
+                <span className="text-sm font-medium text-gray-900">75%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">75%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-blue-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-            </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+              </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-black rounded-full flex-shrink-0"></div>
-                <span className="text-sm text-gray-700">Debt Funds</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-black rounded-full flex-shrink-0"></div>
+                  <span className="text-sm text-gray-700">Debt Funds</span>
+                </div>
+                <span className="text-sm font-medium text-gray-900">20%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">20%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-black h-2 rounded-full" style={{ width: '20%' }}></div>
-            </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-black h-2 rounded-full" style={{ width: '20%' }}></div>
+              </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 lg:w-4 lg:h-4 bg-yellow-500 rounded-full flex-shrink-0"></div>
-                <span className="text-sm text-gray-700">Gold ETF</span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-yellow-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-sm text-gray-700">Gold ETF</span>
+                </div>
+                <span className="text-sm font-medium text-gray-900">5%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900">5%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '5%' }}></div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '5%' }}></div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-blue-200/40 p-4 lg:p-6 rounded-xl shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 lg:mb-6">Top Holdings</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0 mr-4">
-                <p className="text-sm font-medium text-gray-900 truncate">HDFC Equity Fund</p>
-                <p className="text-xs text-gray-500">Large Cap</p>
+        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+          <div className="p-4 lg:p-6 border-b border-blue-100/40">
+            <h3 className="text-lg font-semibold text-gray-900">Top Holdings</h3>
+          </div>
+          <div className="p-4 lg:p-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-4">
+                  <p className="text-sm font-medium text-gray-900 truncate">HDFC Equity Fund</p>
+                  <p className="text-xs text-gray-500">Large Cap</p>
+                </div>
+                <span className="text-sm font-medium text-gray-900 flex-shrink-0">40.1%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900 flex-shrink-0">40.1%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0 mr-4">
-                <p className="text-sm font-medium text-gray-900 truncate">SBI Small Cap Fund</p>
-                <p className="text-xs text-gray-500">Small Cap</p>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-4">
+                  <p className="text-sm font-medium text-gray-900 truncate">SBI Small Cap Fund</p>
+                  <p className="text-xs text-gray-500">Small Cap</p>
+                </div>
+                <span className="text-sm font-medium text-gray-900 flex-shrink-0">21.3%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900 flex-shrink-0">21.3%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0 mr-4">
-                <p className="text-sm font-medium text-gray-900 truncate">ICICI Prudential Bluechip</p>
-                <p className="text-xs text-gray-500">Large Cap</p>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-4">
+                  <p className="text-sm font-medium text-gray-900 truncate">ICICI Prudential Bluechip</p>
+                  <p className="text-xs text-gray-500">Large Cap</p>
+                </div>
+                <span className="text-sm font-medium text-gray-900 flex-shrink-0">27.2%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900 flex-shrink-0">27.2%</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex-1 min-w-0 mr-4">
-                <p className="text-sm font-medium text-gray-900 truncate">Axis Debt Fund</p>
-                <p className="text-xs text-gray-500">Debt</p>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-4">
+                  <p className="text-sm font-medium text-gray-900 truncate">Axis Debt Fund</p>
+                  <p className="text-xs text-gray-500">Debt</p>
+                </div>
+                <span className="text-sm font-medium text-gray-900 flex-shrink-0">11.4%</span>
               </div>
-              <span className="text-sm font-medium text-gray-900 flex-shrink-0">11.4%</span>
             </div>
           </div>
         </div>
@@ -559,31 +504,92 @@ const Portfolio = () => {
 
   // Render Portfolio component (default)
   return (
-    <div className="space-y-6 w-full">
-      <SubNavigation 
-        activeSubView={activeSubView}
-        setActiveSubView={handleSubViewChange}
-        subMenuItems={subMenuItems}
-        isTransitioning={isTransitioning}
-      />
-      
-      <div className="min-h-[600px] relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(37 99 235) 1px, transparent 0)`,
-            backgroundSize: '20px 20px'
-          }}></div>
-        </div>
-        
-        <div className="relative z-10">
-          {renderSubContent()}
-        </div>
-        
-        {isTransitioning && (
-          <div className="absolute top-4 right-4 z-20">
-            <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+    <div className="flex gap-6 lg:gap-8 min-h-screen w-full">
+      {/* Left Side - Portfolio Section */}
+      <div className="flex-1 transition-all duration-300 ease-in-out">
+        <div className="space-y-6 w-full">
+          <SubNavigation 
+            activeSubView={activeSubView}
+            setActiveSubView={handleSubViewChange}
+            subMenuItems={subMenuItems}
+            isTransitioning={isTransitioning}
+          />
+          
+          <div className="min-h-[600px] relative overflow-hidden">
+            <div className="absolute inset-0 opacity-5">
+              <div className="absolute inset-0" style={{
+                backgroundImage: `radial-gradient(circle at 1px 1px, rgb(37 99 235) 1px, transparent 0)`,
+                backgroundSize: '20px 20px'
+              }}></div>
+            </div>
+            
+            <div className="relative z-10">
+              {renderSubContent()}
+            </div>
+            
+            {isTransitioning && (
+              <div className="absolute top-4 right-4 z-20">
+                <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      </div>
+      
+      {/* Separator - Full Height */}
+      <div className="w-px bg-gray-200 flex-shrink-0 hidden lg:block"></div>
+      
+      {/* Right Side - Quick Actions Section */}
+      <div className="w-[28rem] transition-all duration-300 ease-in-out hidden lg:block">
+        <div className="sticky top-0 h-screen overflow-y-auto">
+          <div className="p-4 sm:p-6 lg:p-8">
+            {/* Quick Actions Heading */}
+            <div className="mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
+              <p className="text-sm text-gray-600 mt-1">Start your investment journey</p>
+            </div>
+            
+            <div className="space-y-4">
+              {/* Start SIP */}
+              <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start space-x-4 lg:space-x-5">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Start New SIP</h4>
+                    <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
+                      onClick={() => handleNavigateToExplore('sip')}
+                    >
+                      Start SIP
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lumpsum Investment */}
+              <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start space-x-4 lg:space-x-5">
+                  <div className="w-10 h-10 lg:w-12 lg:h-12 flex border border-blue-300 rounded-full items-center justify-center flex-shrink-0">
+                    <Banknote className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
+                    <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
+                    <Button 
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
+                      onClick={() => handleNavigateToExplore('lumpsum')}
+                    >
+                      Invest Now
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

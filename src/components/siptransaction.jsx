@@ -1,151 +1,49 @@
-import React, { useState, useEffect } from 'react';
+// Here's the complete fixed SIP Transaction component with better payment method handling
+
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
-  ArrowLeft, 
   Calendar, 
   CheckCircle, 
   AlertCircle,
   Loader2,
-  User,
   FileText,
-  TrendingUp,
-  X
+  X,
+  IndianRupee
 } from 'lucide-react';
 
-const SIPTransaction = ({ 
-  clientData, 
-  fundData, 
-  transactionData, 
-  onBack, 
-  onFolioSelection,
-  isOpen = true 
-}) => {
+// Fund Icon Component
+const FundIcon = ({ fund, size = "w-12 h-12" }) => {
+  const getGradientColors = (name) => {
+    const colors = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-purple-500 to-pink-600',
+      'from-indigo-500 to-blue-600',
+      'from-yellow-500 to-orange-600',
+      'from-red-500 to-pink-600',
+      'from-teal-500 to-green-600'
+    ];
+    const index = name ? name.length % colors.length : 0;
+    return colors[index];
+  };
+
+  return (
+    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.name)} rounded-full flex items-center justify-center flex-shrink-0`}>
+      <div className="w-1/2 h-1/2 bg-white rounded-full opacity-80"></div>
+    </div>
+  );
+};
+
+// 1. SIP Configuration Component
+const SIPFormComponent = ({ fundData, onSubmit, loading, errors }) => {
   const [formData, setFormData] = useState({
     amount: '',
     installments: '',
     date: '',
     frequency: 'MONTHLY'
   });
-  
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [newFolioLoading, setNewFolioLoading] = useState(false);
-  const [paymentInitiateLoading, setPaymentInitiateLoading] = useState(false);
-  const [sipResponse, setSipResponse] = useState(null);
-  const [showFolioSelection, setShowFolioSelection] = useState(false);
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-  const [paymentMethodsData, setPaymentMethodsData] = useState(null);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
-  const [showBankConfirmation, setShowBankConfirmation] = useState(false);
-  const [paymentResponse, setPaymentResponse] = useState(null);
-  const [paymentUrlClicked, setPaymentUrlClicked] = useState(false);
-  const [paymentStatusLoading, setPaymentStatusLoading] = useState(false);
-  const [paymentStatusResponse, setPaymentStatusResponse] = useState(null);
-  const [statusCheckAttempts, setStatusCheckAttempts] = useState(0);
-  const [finalPaymentStatus, setFinalPaymentStatus] = useState(null);
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
-
-  // Hardcoded values for payment
-  const PAYMENT_HARDCODED = {
-    folioNumber: "4562132132/45",
-    paymentIp: "192.168.1.100",
-    phoneNumber: "9876543210",
-    ifsc: "ICIC0001234",
-    accountNumber: "123456789012",
-    accountHolderName: "Satish K Perala"
-  };
-
-  // Handle modal close
-  const handleModalClose = () => {
-    if (onBack) {
-      onBack();
-    }
-  };
-
-  // Handle backdrop click
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
-      handleModalClose();
-    }
-  };
-
-  // Handle payment URL click and start status polling
-  const handlePaymentUrlClick = (paymentUrl) => {
-    // Open payment URL in new tab
-    window.open(paymentUrl, '_blank');
-    setPaymentUrlClicked(true);
-    
-    // Start polling payment status
-    startPaymentStatusPolling();
-  };
-
-  // Start polling payment status
-  const startPaymentStatusPolling = async () => {
-    setPaymentStatusLoading(true);
-    setStatusCheckAttempts(0);
-    setFinalPaymentStatus(null);
-    pollPaymentStatus();
-  };
-
-  // Poll payment status with retries - Updated to use new API
-  const pollPaymentStatus = async (attemptNumber = 1) => {
-    if (attemptNumber > 30) {
-      setPaymentStatusLoading(false);
-      setFinalPaymentStatus('TIMEOUT');
-      setErrors({ api: 'Payment status check timeout after 30 attempts. Please check manually.' });
-      return;
-    }
-
-    setStatusCheckAttempts(attemptNumber);
-
-    try {
-      // Updated API endpoint - using the new URL format
-      const transactionId = paymentResponse?.data?.transactionId || sipResponse?.transactionId;
-      const response = await fetch(`https://preprod.wyable.in/api/ondc/payment/status/${transactionId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`Payment Status Check (Attempt ${attemptNumber}):`, data);
-        setPaymentStatusResponse(data);
-        
-        // Check if payment is completed based on the new response format
-        if (data.success && data.data && data.data.paymentStatus === 'PAID') {
-          setPaymentStatusLoading(false);
-          setFinalPaymentStatus('PAID');
-          setShowCompletionModal(true);
-          return;
-        } else if (data.success && data.data && data.data.paymentStatus === 'NOT-PAID') {
-          setPaymentStatusLoading(false);
-          setFinalPaymentStatus('NOT-PAID');
-          setErrors({ api: 'Payment was not completed. Please try again.' });
-          return;
-        }
-        
-        // If status is neither PAID nor NOT-PAID, continue polling
-        setTimeout(() => {
-          pollPaymentStatus(attemptNumber + 1);
-        }, 5000); // 5 second delay
-        
-      } else {
-        // Continue polling if not 200
-        setTimeout(() => {
-          pollPaymentStatus(attemptNumber + 1);
-        }, 5000); // 5 second delay
-      }
-    } catch (error) {
-      console.error(`Payment status check error (Attempt ${attemptNumber}):`, error);
-      
-      // Continue polling even on error
-      setTimeout(() => {
-        pollPaymentStatus(attemptNumber + 1);
-      }, 5000);
-    }
-  };
 
   // Get SIP constraints from fund data
   const getSIPConstraints = () => {
@@ -162,304 +60,20 @@ const SIPTransaction = ({
       maxAmount: parseInt(sipFulfillment.thresholds.AMOUNT_MAX || '0'),
       minInstallments: parseInt(sipFulfillment.thresholds.INSTALMENTS_COUNT_MIN || '0'),
       maxInstallments: parseInt(sipFulfillment.thresholds.INSTALMENTS_COUNT_MAX || '0'),
-      cumulativeMinAmount: parseInt(sipFulfillment.thresholds.CUMULATIVE_AMOUNT_MIN || '0'),
       frequencyDates: sipFulfillment.thresholds.FREQUENCY_DATES?.split(',') || []
     };
   };
 
   const constraints = getSIPConstraints();
 
-  // Validation
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!formData.amount || formData.amount <= 0) {
-      newErrors.amount = 'Please enter a valid amount';
-    } else if (constraints) {
-      if (formData.amount < constraints.minAmount) {
-        newErrors.amount = `Minimum amount is ₹${constraints.minAmount}`;
-      } else if (formData.amount > constraints.maxAmount) {
-        newErrors.amount = `Maximum amount is ₹${constraints.maxAmount}`;
-      }
-    }
-    
-    if (!formData.installments || formData.installments <= 0) {
-      newErrors.installments = 'Please enter number of installments';
-    } else if (constraints) {
-      if (formData.installments < constraints.minInstallments) {
-        newErrors.installments = `Minimum ${constraints.minInstallments} installments`;
-      } else if (formData.installments > constraints.maxInstallments) {
-        newErrors.installments = `Maximum ${constraints.maxInstallments} installments`;
-      }
-    }
-    
-    if (!formData.date) {
-      newErrors.date = 'Please select SIP date';
-    }
-
-    // Check cumulative amount
-    if (constraints && formData.amount && formData.installments) {
-      const totalAmount = formData.amount * formData.installments;
-      if (totalAmount < constraints.cumulativeMinAmount) {
-        newErrors.cumulative = `Total investment (₹${totalAmount}) should be at least ₹${constraints.cumulativeMinAmount}`;
-      }
-    }
-    
-    return newErrors;
-  };
-
-  // Handle input changes
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear errors for the field
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
   };
 
-  // Generate full date from selected day
-  const generateFullDate = (selectedDay) => {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth(); // 0-based month
-    
-    // Create date with current year, current month, and selected day
-    const fullDate = new Date(currentYear, currentMonth, parseInt(selectedDay));
-    
-    // If the selected date has already passed this month, move to next month
-    if (fullDate < currentDate) {
-      fullDate.setMonth(currentMonth + 1);
-    }
-    
-    // Format as YYYY-MM-DD
-    return fullDate.toISOString().split('T')[0];
+  const handleSubmit = () => {
+    onSubmit(formData);
   };
 
-  // Handle SIP submission
-  const handleSubmitSIP = async () => {
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-
-    setLoading(true);
-    setErrors({});
-
-    try {
-      // Generate full date from selected day
-      const fullSipDate = generateFullDate(formData.date);
-      
-      const requestBody = {
-        type: "SIP",
-        transactionId: transactionData.transactionId,
-        providerId: transactionData.providerId,
-        itemId: transactionData.itemId,
-        fulfillmentId: transactionData.fulfillmentId,
-        sip: {
-          value: parseInt(formData.amount),
-          repeat: parseInt(formData.installments),
-          date: fullSipDate,
-          frequency: formData.frequency
-        },
-        distributor: {
-          arn: "ARN-123456",
-          euin: "E12345"
-        },
-        customer: {
-          pan: clientData.pan
-        }
-      };
-
-      console.log('Submitting SIP request:', requestBody);
-      console.log('Selected day:', formData.date, '-> Full date:', fullSipDate);
-
-      const response = await fetch('https://viable-money-be.onrender.com/api/transaction/select', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        console.log('SIP Response:', data);
-        setSipResponse(data.data);
-        
-        // Check if it's a new folio scenario
-        if (data.data.type === 'SIP_NEW' || (data.data.existingFolios && data.data.existingFolios.length === 0)) {
-          setShowFolioSelection(true);
-        } else {
-          // Handle other scenarios - call parent callback
-          if (onFolioSelection) {
-            onFolioSelection(data.data, 'existing');
-          }
-        }
-      } else {
-        throw new Error(data.message || 'Failed to submit SIP');
-      }
-      
-    } catch (error) {
-      console.error('Error submitting SIP:', error);
-      setErrors({ api: 'Failed to submit SIP. Please try again.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle new folio selection
-  const handleNewFolioSelection = async () => {
-    if (!sipResponse?.newFolio) return;
-
-    setNewFolioLoading(true);
-    setErrors({});
-
-    try {
-      const requestBody = {
-        transactionId: sipResponse.transactionId,
-        formUrl: sipResponse.newFolio.formUrl,
-        formId: sipResponse.newFolio.formId
-      };
-
-      console.log('New Folio Selection Request:', requestBody);
-
-      const response = await fetch('https://viable-money-be.onrender.com/api/transaction/newfolio-selection', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('New Folio Selection Response:', data);
-        
-        // Check if we have payment methods available
-        if (data.data && data.data.status === 'PAYMENT_SELECTION_AVAILABLE' && data.data.paymentMethods) {
-          setPaymentMethodsData(data.data);
-          setShowFolioSelection(false);
-          setShowPaymentMethods(true);
-        } else {
-          // Call parent callback with success if no payment methods
-          if (onFolioSelection) {
-            onFolioSelection({
-              ...sipResponse,
-              folioCreated: true,
-              sipDetails: {
-                amount: formData.amount,
-                installments: formData.installments,
-                date: generateFullDate(formData.date),
-                totalInvestment: getTotalInvestment()
-              }
-            }, 'new');
-          }
-        }
-      } else {
-        throw new Error(data.message || 'Failed to create new folio');
-      }
-      
-    } catch (error) {
-      console.error('Error creating new folio:', error);
-      setErrors({ api: 'Failed to create new folio. Please try again.' });
-    } finally {
-      setNewFolioLoading(false);
-    }
-  };
-
-  // Handle payment method selection
-  const handlePaymentMethodSelect = (paymentMethod) => {
-    setSelectedPaymentMethod(paymentMethod);
-    setShowPaymentMethods(false);
-    setShowBankConfirmation(true);
-  };
-
-  // Handle initiate payment
-  const handleInitiatePayment = async () => {
-    if (!selectedPaymentMethod || !paymentMethodsData) return;
-
-    setPaymentInitiateLoading(true);
-    setErrors({});
-
-    try {
-      const requestBody = {
-        transactionId: paymentMethodsData.transactionId,
-        folioNumber: PAYMENT_HARDCODED.folioNumber,
-        paymentIp: PAYMENT_HARDCODED.paymentIp,
-        phoneNumber: PAYMENT_HARDCODED.phoneNumber,
-        amount: parseInt(formData.amount),
-        ifsc: PAYMENT_HARDCODED.ifsc,
-        accountNumber: PAYMENT_HARDCODED.accountNumber,
-        accountHolderName: PAYMENT_HARDCODED.accountHolderName,
-        paymentMethod: {
-          mode: selectedPaymentMethod.methods[0]?.mode,
-          auth: selectedPaymentMethod.methods[0]?.auth,
-          mandateLimit: selectedPaymentMethod.methods[0]?.mandate_limit || 50000,
-          mandateIdentifier: 6
-        }
-      };
-
-      console.log('Initiating Payment Request:', requestBody);
-
-      const response = await fetch('https://viable-money-be.onrender.com/api/transaction/initiate-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log('Payment Initiation Response:', data);
-        setPaymentResponse(data);
-      } else {
-        throw new Error(data.message || 'Failed to initiate payment');
-      }
-      
-    } catch (error) {
-      console.error('Error initiating payment:', error);
-      setErrors({ api: 'Failed to initiate payment. Please try again.' });
-    } finally {
-      setPaymentInitiateLoading(false);
-    }
-  };
-
-  // Handle completion modal close and call parent callback
-  const handleCompletionClose = () => {
-    setShowCompletionModal(false);
-    if (onFolioSelection) {
-      onFolioSelection({
-        ...sipResponse,
-        folioCreated: true,
-        paymentInitiated: true,
-        paymentResponse: paymentResponse,
-        paymentStatusResponse: paymentStatusResponse,
-        finalStatus: 'PAID',
-        sipDetails: {
-          amount: formData.amount,
-          installments: formData.installments,
-          date: generateFullDate(formData.date),
-          totalInvestment: getTotalInvestment()
-        }
-      }, 'new');
-    }
-  };
-
-  // Calculate total investment
-  const getTotalInvestment = () => {
-    if (formData.amount && formData.installments) {
-      return formData.amount * formData.installments;
-    }
-    return 0;
-  };
-
-  // Generate date options (1-28 of month)
   const getDateOptions = () => {
     if (constraints?.frequencyDates?.length > 0) {
       return constraints.frequencyDates.map(date => ({
@@ -468,7 +82,6 @@ const SIPTransaction = ({
       }));
     }
     
-    // Default 1-28
     return Array.from({ length: 28 }, (_, i) => {
       const date = i + 1;
       return {
@@ -487,592 +100,1337 @@ const SIPTransaction = ({
     return 'th';
   };
 
-  // Don't render if not open
-  if (!isOpen) return null;
-
   return (
-    <>
-      {/* Modal Backdrop */}
-      <div 
-        className="fixed inset-0 bg-black/50  z-50 flex items-center justify-center p-4 "
-        onClick={handleBackdropClick}
-      >
-        {/* Modal Container */}
-        <div 
-          className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col border border-blue-300"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Loading line animation */}
-          {(loading || newFolioLoading || paymentInitiateLoading) && (
-            <div className="absolute top-0 left-0 right-0 z-10 h-0.5 bg-gray-200">
-              <div 
-                className="h-full bg-gradient-to-r from-transparent via-blue-500 to-transparent"
-                style={{
-                  animation: 'loading-sweep 1.5s ease-in-out infinite'
-                }}
-              />
-            </div>
-          )}
+    <div className="space-y-4">
+      {/* SIP Amount */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          SIP Amount (₹) <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="number"
+          value={formData.amount}
+          onChange={(e) => handleInputChange('amount', e.target.value)}
+          placeholder="Enter monthly amount"
+          className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            errors.amount ? 'border-red-300' : 'border-gray-300'
+          }`}
+        />
+        {errors.amount && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
+        {constraints && (
+          <p className="mt-1 text-xs text-gray-500">
+            ₹{constraints.minAmount} - ₹{constraints.maxAmount}
+          </p>
+        )}
+      </div>
 
-          {/* Modal Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 ">
-            <div className="flex items-center space-x-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900">Setup SIP</h1>
-                <p className="text-sm text-gray-600">Systematic Investment Plan</p>
+      {/* Number of Installments */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Duration (months) <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="number"
+          value={formData.installments}
+          onChange={(e) => handleInputChange('installments', e.target.value)}
+          placeholder="Enter months"
+          className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            errors.installments ? 'border-red-300' : 'border-gray-300'
+          }`}
+        />
+        {errors.installments && <p className="mt-1 text-sm text-red-600">{errors.installments}</p>}
+        {constraints && (
+          <p className="mt-1 text-xs text-gray-500">
+            {constraints.minInstallments} - {constraints.maxInstallments} months
+          </p>
+        )}
+      </div>
+
+      {/* SIP Date */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          SIP Date <span className="text-red-500">*</span>
+        </label>
+        <select
+          value={formData.date}
+          onChange={(e) => handleInputChange('date', e.target.value)}
+          className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            errors.date ? 'border-red-300' : 'border-gray-300'
+          }`}
+        >
+          <option value="">Select date</option>
+          {getDateOptions().map(option => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}
+      </div>
+
+      {/* Frequency */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Frequency</label>
+        <input
+          type="text"
+          value="Monthly"
+          disabled
+          className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 text-gray-500"
+        />
+      </div>
+
+      <div className="flex justify-center pt-4">
+        <Button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-12 py-3 rounded-full text-base font-medium"
+        >
+          Setup SIP
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// 2. Folio Selection Component
+const FolioSelectionComponent = ({ sipResponse, onCreateFolio, onSelectExistingFolio, loading, errors }) => {
+  const hasExistingFolios = sipResponse?.existingFolios && sipResponse.existingFolios.length > 0;
+  const hasNewFolioOption = sipResponse?.newFolio;
+
+  // If only new folio option (original scenario)
+  if (!hasExistingFolios && hasNewFolioOption) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+            <FileText className="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            Create New Folio
+          </h3>
+          <p className="text-gray-600 mb-6">
+            No existing folio found. A new folio will be created for your SIP investment.
+          </p>
+        </div>
+
+        <Button
+          onClick={onCreateFolio}
+          disabled={loading}
+          className="w-full bg-green-600 hover:bg-green-700"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Creating Folio...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Create New Folio
+            </>
+          )}
+        </Button>
+      </div>
+    );
+  }
+
+  // If both new and existing folios are available
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+          <FileText className="w-8 h-8 text-blue-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          Select Folio Option
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Choose to use an existing folio or create a new one for your SIP investment.
+        </p>
+      </div>
+
+      {/* Existing Folios */}
+      {hasExistingFolios && (
+        <div className="space-y-4">
+          <h4 className="font-medium text-gray-900">Use Existing Folio</h4>
+          {sipResponse.existingFolios.map((folio, index) => (
+            <div
+              key={index}
+              onClick={() => onSelectExistingFolio(folio)}
+              className="border-2 border-gray-200 rounded p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-medium text-gray-900">Folio: {folio.folioNumber}</p>
+                  <p className="text-sm text-gray-600">Holder: {folio.holderName}</p>
+                  <p className="text-xs text-gray-500">Created: {folio.createdOn}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500">Email: {folio.maskedEmail}</p>
+                  <p className="text-xs text-gray-500">Mobile: {folio.maskedMobile}</p>
+                  <span className="inline-block mt-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    {folio.holdingPattern}
+                  </span>
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* New Folio Option */}
+      {hasNewFolioOption && (
+        <div className="space-y-4">
+          <div className="flex items-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="px-3 text-sm text-gray-500">OR</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+          
+          <Button
+            onClick={onCreateFolio}
+            disabled={loading}
+            variant="outline"
+            className="w-full border-blue-200 hover:bg-blue-50"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating New Folio...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Create New Folio
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// 3. KYC Component
+const KYCComponent = ({ 
+  kycData, 
+  onCompleteKYC, 
+  onCompleteESign, 
+  onGetPaymentMethods,
+  kycUrlClicked,
+  eSignUrlClicked,
+  kycStatusLoading,
+  eSignStatusLoading,
+  kycStatusAttempts,
+  eSignStatusAttempts,
+  currentKYCStep,
+  errors 
+}) => {
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
+          <FileText className="w-8 h-8 text-orange-600" />
+        </div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          KYC Verification Required
+        </h3>
+        <p className="text-gray-600 mb-6">
+          Complete your KYC verification to proceed with the investment.
+        </p>
+      </div>
+
+      {/* KYC Progress */}
+      <div className="bg-blue-50 border border-blue-200 rounded p-4">
+        <h4 className="font-medium text-blue-900 mb-3">KYC Progress</h4>
+        <div className="space-y-2 text-sm">
+          <div className="flex justify-between">
+            <span className="text-blue-700">Current Step:</span>
+            <span className="font-medium text-blue-900">
+              {kycData?.currentStep || 1} of {kycData?.totalSteps || 2}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <div className={`text-xs p-2 rounded ${
+              kycData?.checklistStatus?.kyc === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+              kycData?.checklistStatus?.kyc && kycData?.checklistStatus?.kyc !== 'PENDING' ? 'bg-green-100 text-green-800' : 
+              'bg-gray-100 text-gray-600'
+            }`}>
+              KYC: {kycData?.checklistStatus?.kyc || 'PENDING'}
+            </div>
+            <div className={`text-xs p-2 rounded ${
+              kycData?.checklistStatus?.esign === 'PENDING' ? 'bg-yellow-100 text-yellow-800' : 
+              kycData?.checklistStatus?.esign === 'SUBMITTED' ? 'bg-green-100 text-green-800' : 
+              'bg-gray-100 text-gray-600'
+            }`}>
+              E-Sign: {kycData?.checklistStatus?.esign || 'PENDING'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Step 1: KYC */}
+      {currentKYCStep === 'kyc' && (
+        <div className="space-y-4">
+          <div className="bg-orange-50 border border-orange-200 rounded p-4">
+            <h4 className="font-medium text-orange-900 mb-3">Step 1: Complete KYC Form</h4>
+            <p className="text-sm text-orange-800 mb-4">
+              Click the button below to open the KYC form in a new tab and complete your verification.
+            </p>
             
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={handleModalClose}
-              className="text-gray-500 hover:text-gray-700"
+            <Button
+              onClick={() => onCompleteKYC(kycData?.formUrl)}
+              disabled={kycUrlClicked}
+              className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400"
             >
-              <X className="w-5 h-5" />
+              {kycUrlClicked ? 'KYC Form Opened' : 'Complete KYC'}
             </Button>
           </div>
 
-          {/* Modal Content */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* Left Sidebar */}
-            <div className="w-80 bg-gray-50 border-r border-gray-200 p-6 overflow-y-auto">
-              {/* Progress Steps */}
-              <div className="space-y-4 mb-6">
-                {[
-                  { number: 1, title: 'SIP Configuration', subtitle: 'Set amount & duration', active: !showFolioSelection && !showPaymentMethods && !showBankConfirmation },
-                  { number: 2, title: 'Folio Setup', subtitle: 'Create investment folio', active: showFolioSelection },
-                  { number: 3, title: 'Payment Method', subtitle: 'Choose payment option', active: showPaymentMethods },
-                  { number: 4, title: 'Bank Confirmation', subtitle: 'Confirm bank details', active: showBankConfirmation }
-                ].map((step) => {
-                  const isCompleted = (step.number === 1 && (showFolioSelection || showPaymentMethods || showBankConfirmation)) || 
-                                    (step.number === 2 && (showPaymentMethods || showBankConfirmation)) ||
-                                    (step.number === 3 && showBankConfirmation);
-                  const isCurrent = step.active;
-                  
-                  return (
-                    <div key={step.number} className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 mt-1">
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
-                          isCompleted || isCurrent ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-                        }`}>
-                          {isCompleted ? (
-                            <CheckCircle className="w-3 h-3" />
-                          ) : (
-                            step.number
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${isCurrent ? 'text-blue-600' : 'text-gray-700'}`}>
-                          {step.title}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">{step.subtitle}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Client Summary */}
-              <div className="mb-4 p-4 bg-white rounded-lg border border-gray-200">
-                <p className="text-sm font-medium text-gray-900 mb-1">Selected Client:</p>
-                <p className="text-sm text-gray-700">{clientData?.name}</p>
-                <p className="text-xs text-gray-500 mt-1">{clientData?.pan}</p>
-              </div>
-
-              {/* Fund Summary */}
-              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm font-medium text-blue-900 mb-1">Selected Fund:</p>
-                <p className="text-sm text-blue-700">{fundData?.name}</p>
-                <p className="text-xs text-blue-600 mt-1">by {fundData?.creator}</p>
-                
-                {constraints && (
-                  <div className="mt-3 pt-3 border-t border-blue-200 space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Min Amount:</span>
-                      <span className="text-blue-900">₹{constraints.minAmount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Max Amount:</span>
-                      <span className="text-blue-900">₹{constraints.maxAmount}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Investment Summary */}
-              {formData.amount && formData.installments && formData.date && !showFolioSelection && !showPaymentMethods && !showBankConfirmation && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm font-medium text-green-900 mb-3">Investment Summary:</p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-green-700">Monthly:</span>
-                      <span className="font-medium text-green-900">₹{formData.amount}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-green-700">Duration:</span>
-                      <span className="font-medium text-green-900">{formData.installments} months</span>
-                    </div>
-                    <div className="flex justify-between border-t border-green-200 pt-2">
-                      <span className="text-green-700">Total:</span>
-                      <span className="font-bold text-green-900">₹{getTotalInvestment().toLocaleString()}</span>
-                    </div>
-                  </div>
+          {/* KYC Status Checking */}
+          {kycStatusLoading && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+              <div className="flex items-center justify-center space-x-3">
+                <Loader2 className="w-5 h-5 animate-spin text-yellow-600" />
+                <div className="text-center">
+                  <p className="text-yellow-800 font-medium">Checking KYC Status...</p>
+                  <p className="text-yellow-700 text-sm">
+                    Attempt {kycStatusAttempts} of 30
+                  </p>
                 </div>
-              )}
+              </div>
             </div>
+          )}
+        </div>
+      )}
 
-            {/* Main Content */}
-            <div className="flex-1 p-6 overflow-y-auto">
-              {/* Header */}
-              <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                  {showBankConfirmation ? 'Bank Account Confirmation' :
-                   showPaymentMethods ? 'Select Payment Method' :
-                   showFolioSelection ? 'Folio Setup' : 'SIP Configuration'}
-                </h2>
-                <p className="text-gray-600">
-                  {showBankConfirmation
-                    ? 'Confirm your bank account details for payment processing'
-                    : showPaymentMethods
-                      ? 'Choose your preferred payment method for SIP'
-                      : showFolioSelection
-                        ? 'Create new folio for your investment'
-                        : 'Configure your systematic investment plan'
-                  }
+      {/* Step 2: E-Sign */}
+      {currentKYCStep === 'esign' && (
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded p-4 mb-4">
+            <h4 className="font-medium text-green-900 mb-2">KYC Completed Successfully!</h4>
+            <p className="text-sm text-green-800">Your KYC verification has been completed.</p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded p-4">
+            <h4 className="font-medium text-blue-900 mb-3">Step 2: E-Sign Document</h4>
+            <p className="text-sm text-blue-800 mb-4">
+              Now complete the electronic signature to finalize your application.
+            </p>
+            
+            <Button
+              onClick={onCompleteESign}
+              disabled={eSignUrlClicked}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+            >
+              {eSignUrlClicked ? 'E-Sign Form Opened' : 'Complete E-Sign'}
+            </Button>
+          </div>
+
+          {/* E-Sign Status Checking */}
+          {eSignStatusLoading && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+              <div className="flex items-center justify-center space-x-3">
+                <Loader2 className="w-5 h-5 animate-spin text-yellow-600" />
+                <div className="text-center">
+                  <p className="text-yellow-800 font-medium">Checking E-Sign Status...</p>
+                  <p className="text-yellow-700 text-sm">
+                    Attempt {eSignStatusAttempts} of 30
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 3: Get Payment Methods */}
+      {currentKYCStep === 'payment_methods' && (
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded p-4 mb-4">
+            <h4 className="font-medium text-green-900 mb-2">E-Sign Completed Successfully!</h4>
+            <p className="text-sm text-green-800">Your application has been submitted successfully.</p>
+          </div>
+
+          <Button
+            onClick={onGetPaymentMethods}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Proceed to Payment Methods
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PaymentInitiationComponent = ({ 
+  paymentMethodsData, 
+  selectedPaymentMethod,
+  onPaymentMethodSelect,
+  onInitiatePayment,
+  loading,
+  paymentResponse,
+  onPaymentUrlClick,
+  paymentUrlClicked,
+  paymentStatusLoading,
+  statusCheckAttempts,
+  errors 
+}) => {
+  const PAYMENT_HARDCODED = {
+    folioNumber: "4562132132/45",
+    paymentIp: "192.168.1.100",
+    phoneNumber: "9876543210",
+    ifsc: "ICIC0001234",
+    accountNumber: "123456789012",
+    accountHolderName: "Satish K Perala"
+  };
+
+  // Debug: Log the payment methods data structure
+  console.log('PaymentInitiationComponent - paymentMethodsData:', paymentMethodsData);
+
+  return (
+    <div className="space-y-4">
+      {!selectedPaymentMethod ? (
+        // Payment Method Selection
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Select Payment Method</h3>
+          
+          {/* Debug Information */}
+          <div className="mb-4 p-3 bg-gray-50 border rounded text-sm">
+            <p><strong>Debug Info:</strong></p>
+            <p>Payment Methods Available: {paymentMethodsData?.paymentMethods?.length || 0}</p>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-blue-600">View Raw Data</summary>
+              <pre className="mt-2 text-xs bg-white p-2 border rounded overflow-auto max-h-40">
+                {JSON.stringify(paymentMethodsData, null, 2)}
+              </pre>
+            </details>
+          </div>
+
+          <div className="space-y-3">
+            {paymentMethodsData?.paymentMethods?.length > 0 ? (
+              paymentMethodsData.paymentMethods.map((paymentMethod, index) => {
+                // Flexible key generation - try multiple possible ID fields
+                const methodKey = paymentMethod.paymentId || paymentMethod.id || paymentMethod._id || `method-${index}`;
+                
+                // Flexible method access - check multiple possible structures
+                const methods = paymentMethod.availableMethods || paymentMethod.methods || [];
+                const hasValidMethods = Array.isArray(methods) && methods.length > 0;
+                
+                // Extract display information flexibly
+                const displayInfo = {
+                  mode: (hasValidMethods ? methods[0]?.mode : paymentMethod.mode) || 'Unknown Payment Method',
+                  auth: (hasValidMethods ? methods[0]?.auth : paymentMethod.auth) || 'N/A',
+                  type: paymentMethod.type || 'Unknown',
+                  collectedBy: paymentMethod.collectedBy || 'Unknown',
+                  mandateLimit: (hasValidMethods ? (methods[0]?.mandateLimit || methods[0]?.mandate_limit) : paymentMethod.mandateLimit) || null,
+                  bankName: (hasValidMethods ? methods[0]?.bankName : paymentMethod.bankName) || null
+                };
+
+                return (
+                  <div
+                    key={methodKey}
+                    onClick={() => onPaymentMethodSelect(paymentMethod)}
+                    className="border-2 border-gray-200 rounded p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900">
+                        {displayInfo.mode.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        {displayInfo.auth}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      <p>Type: {displayInfo.type.replace(/_/g, ' ')}</p>
+                      <p>Collected by: {displayInfo.collectedBy}</p>
+                      {displayInfo.mandateLimit && (
+                        <p>Mandate Limit: ₹{displayInfo.mandateLimit}</p>
+                      )}
+                      {displayInfo.bankName && (
+                        <p>Bank: {displayInfo.bankName}</p>
+                      )}
+                      <div className="flex justify-between items-center mt-2">
+                        <span className={`text-xs px-2 py-1 rounded ${hasValidMethods ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                          {hasValidMethods ? '✓ Available' : 'Limited Info'}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          ID: {methodKey}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8">
+                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 mb-2">No payment methods available</p>
+                <p className="text-xs text-gray-400">
+                  This might be due to data not being loaded yet or an API issue.
+                </p>
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-blue-600 text-sm">Show Debug Info</summary>
+                  <pre className="mt-2 text-xs bg-gray-100 p-2 border rounded overflow-auto max-h-40">
+                    {JSON.stringify(paymentMethodsData, null, 2)}
+                  </pre>
+                </details>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        // Bank Account Confirmation
+        <div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">Confirm Bank Details</h3>
+          
+          {/* Selected Payment Method */}
+          <div className="bg-green-50 border border-green-200 rounded p-4 mb-4">
+            <h4 className="font-medium text-green-900 mb-2">Selected Payment Method</h4>
+            <p className="text-green-800">
+              {(selectedPaymentMethod.availableMethods?.[0]?.mode || 
+                selectedPaymentMethod.methods?.[0]?.mode || 
+                selectedPaymentMethod.mode || 'Unknown').replace(/_/g, ' ')}
+            </p>
+            {(selectedPaymentMethod.availableMethods?.[0]?.bankName || 
+              selectedPaymentMethod.methods?.[0]?.bankName || 
+              selectedPaymentMethod.bankName) && (
+              <p className="text-sm text-green-700 mt-1">
+                Bank: {selectedPaymentMethod.availableMethods?.[0]?.bankName || 
+                       selectedPaymentMethod.methods?.[0]?.bankName || 
+                       selectedPaymentMethod.bankName}
+              </p>
+            )}
+          </div>
+
+          {/* Bank Details */}
+          <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-4">
+            <h4 className="font-medium text-blue-900 mb-3">Bank Account Details</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="text-blue-700">Account Holder:</span>
+                <p className="text-blue-900">{PAYMENT_HARDCODED.accountHolderName}</p>
+              </div>
+              <div>
+                <span className="text-blue-700">Account Number:</span>
+                <p className="text-blue-900">{PAYMENT_HARDCODED.accountNumber}</p>
+              </div>
+              <div>
+                <span className="text-blue-700">IFSC Code:</span>
+                <p className="text-blue-900">{PAYMENT_HARDCODED.ifsc}</p>
+              </div>
+              <div>
+                <span className="text-blue-700">Phone Number:</span>
+                <p className="text-blue-900">{PAYMENT_HARDCODED.phoneNumber}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Response */}
+          {paymentResponse?.data?.paymentUrl && (
+            <div className="bg-green-50 border border-green-200 rounded p-4 mb-4">
+              <h4 className="font-medium text-green-900 mb-3">Payment Initiated!</h4>
+              <div className="text-center mb-4">
+                <Button
+                  onClick={() => onPaymentUrlClick(paymentResponse.data.paymentUrl)}
+                  disabled={paymentUrlClicked}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {paymentUrlClicked ? 'Payment Link Opened' : 'Proceed to Payment'}
+                </Button>
+                <p className="text-xs text-green-700 mt-2">
+                  Click to complete your SIP payment in a new tab
                 </p>
               </div>
 
-              {/* Error Messages */}
-              {(errors.api || errors.cumulative) && (
-                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div className="flex items-center">
-                    <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
-                    <p className="text-sm font-medium text-red-800">
-                      {errors.api || errors.cumulative}
-                    </p>
+              {/* Payment Status Checking */}
+              {paymentStatusLoading && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
+                  <div className="flex items-center justify-center space-x-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-yellow-600" />
+                    <div className="text-center">
+                      <p className="text-yellow-800 font-medium">Checking Payment Status...</p>
+                      <p className="text-yellow-700 text-sm">
+                        Attempt {statusCheckAttempts} of 30
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Main Content Area */}
-              <div className="space-y-6">
-                {/* Folio Selection Screen */}
-                {showFolioSelection && sipResponse && (
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-lg border p-6">
-                      <div className="text-center mb-6">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                          <FileText className="w-8 h-8 text-blue-600" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          No Existing Folio Found
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                          We couldn't find any existing folios for this fund. A new folio will be created for your SIP investment.
-                        </p>
-                      </div>
+          <Button
+            onClick={onInitiatePayment}
+            disabled={loading || paymentResponse}
+            className="w-full bg-green-600 hover:bg-green-700"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Initiating Payment...
+              </>
+            ) : paymentResponse ? (
+              'Payment Initiated'
+            ) : (
+              'Confirm & Initiate Payment'
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
 
-                      {/* SIP Summary */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                        <h4 className="text-lg font-semibold text-blue-900 mb-4">SIP Investment Details</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-blue-700 font-medium">Fund:</span>
-                            <p className="text-blue-900">{sipResponse.itemDetails?.schemeName || fundData?.name}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Fund House:</span>
-                            <p className="text-blue-900">{sipResponse.itemDetails?.fundHouse || fundData?.creator}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Monthly Amount:</span>
-                            <p className="text-blue-900 font-semibold">₹{formData.amount}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Duration:</span>
-                            <p className="text-blue-900">{formData.installments} months</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Start Date:</span>
-                            <p className="text-blue-900">{generateFullDate(formData.date)}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Total Investment:</span>
-                            <p className="text-blue-900 font-bold">₹{getTotalInvestment().toLocaleString()}</p>
-                          </div>
-                        </div>
-                      </div>
+// Main SIP Transaction Component
+const SIPTransaction = ({ 
+  clientData, 
+  fundData, 
+  transactionData, 
+  onBack, 
+  onFolioSelection,
+  isOpen = true 
+}) => {
+  const [currentStep, setCurrentStep] = useState('form'); // 'form' | 'folio' | 'kyc' | 'payment'
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  
+  // API Responses
+  const [sipResponse, setSipResponse] = useState(null);
+  const [paymentMethodsData, setPaymentMethodsData] = useState(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [paymentResponse, setPaymentResponse] = useState(null);
+  
+  // Folio selection
+  const [selectedExistingFolio, setSelectedExistingFolio] = useState(null);
 
-                      {/* Action Buttons */}
-                      <div className="flex justify-center space-x-4">
-                        <Button
-                          onClick={handleNewFolioSelection}
-                          disabled={newFolioLoading}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          {newFolioLoading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Creating New Folio...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Create New Folio
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowFolioSelection(false)}
-                          disabled={newFolioLoading}
-                        >
-                          Back to SIP Details
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+  // KYC States
+  const [kycData, setKycData] = useState(null);
+  const [currentKYCStep, setCurrentKYCStep] = useState('kyc'); // 'kyc' | 'esign' | 'payment_methods'
+  const [kycUrlClicked, setKycUrlClicked] = useState(false);
+  const [eSignUrlClicked, setESignUrlClicked] = useState(false);
+  const [kycStatusLoading, setKycStatusLoading] = useState(false);
+  const [eSignStatusLoading, setESignStatusLoading] = useState(false);
+  const [kycStatusAttempts, setKycStatusAttempts] = useState(0);
+  const [eSignStatusAttempts, setESignStatusAttempts] = useState(0);
+  const [eSignData, setESignData] = useState(null);
 
-                {/* Payment Method Selection Screen */}
-                {showPaymentMethods && paymentMethodsData && (
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-lg border p-6">
-                      <div className="text-center mb-6">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
-                          <CheckCircle className="w-8 h-8 text-green-600" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          Folio Created Successfully!
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                          Please select your preferred payment method to proceed with SIP setup.
-                        </p>
-                      </div>
+  // Payment Status Polling States
+  const [paymentUrlClicked, setPaymentUrlClicked] = useState(false);
+  const [paymentStatusLoading, setPaymentStatusLoading] = useState(false);
+  const [paymentStatusResponse, setPaymentStatusResponse] = useState(null);
+  const [statusCheckAttempts, setStatusCheckAttempts] = useState(0);
+  const [finalPaymentStatus, setFinalPaymentStatus] = useState(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
 
-                      {/* Payment Methods */}
-                      <div className="space-y-4">
-                        <h4 className="text-lg font-semibold text-gray-900">Available Payment Methods</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {paymentMethodsData.paymentMethods
-                            .filter(method => method.methods && method.methods.length > 0)
-                            .map((paymentMethod) => (
-                            <div
-                              key={paymentMethod.paymentId}
-                              onClick={() => handlePaymentMethodSelect(paymentMethod)}
-                              className="border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-gray-900">
-                                  {paymentMethod.methods[0]?.mode?.replace('_', ' ')}
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                  {paymentMethod.methods[0]?.auth}
-                                </span>
-                              </div>
-                              <div className="text-sm text-gray-600">
-                                <p>Collected by: {paymentMethod.collectedBy}</p>
-                                <p>Type: {paymentMethod.type.replace('_', ' ')}</p>
-                                {paymentMethod.methods[0]?.mandate_limit && (
-                                  <p>Mandate Limit: ₹{paymentMethod.methods[0].mandate_limit}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+  // Handle modal close
+  const handleModalClose = () => {
+    if (onBack) onBack();
+  };
 
-                {/* Bank Account Confirmation Screen */}
-                {showBankConfirmation && selectedPaymentMethod && (
-                  <div className="space-y-6">
-                    <div className="bg-white rounded-lg border p-6">
-                      <div className="text-center mb-6">
-                        <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-                          <FileText className="w-8 h-8 text-blue-600" />
-                        </div>
-                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                          Confirm Bank Account Details
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                          Please verify your bank account details before proceeding with payment setup.
-                        </p>
-                      </div>
+  // Handle backdrop click
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleModalClose();
+    }
+  };
 
-                      {/* Selected Payment Method */}
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-                        <h4 className="text-lg font-semibold text-green-900 mb-4">Selected Payment Method</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-green-700 font-medium">Payment Mode:</span>
-                            <p className="text-green-900">{selectedPaymentMethod.methods[0]?.mode?.replace('_', ' ')}</p>
-                          </div>
-                          <div>
-                            <span className="text-green-700 font-medium">Authentication:</span>
-                            <p className="text-green-900">{selectedPaymentMethod.methods[0]?.auth}</p>
-                          </div>
-                          <div>
-                            <span className="text-green-700 font-medium">Monthly Amount:</span>
-                            <p className="text-green-900 font-bold">₹{formData.amount}</p>
-                          </div>
-                          <div>
-                            <span className="text-green-700 font-medium">Mandate Limit:</span>
-                            <p className="text-green-900">₹{selectedPaymentMethod.methods[0]?.mandate_limit || 50000}</p>
-                          </div>
-                        </div>
-                      </div>
+  // Handle payment URL click and start status polling
+  const handlePaymentUrlClick = (paymentUrl) => {
+    window.open(paymentUrl, '_blank');
+    setPaymentUrlClicked(true);
+    startPaymentStatusPolling();
+  };
 
-                      {/* Bank Account Details */}
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-                        <h4 className="text-lg font-semibold text-blue-900 mb-4">Bank Account Details</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-blue-700 font-medium">Account Holder Name:</span>
-                            <p className="text-blue-900">{PAYMENT_HARDCODED.accountHolderName}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Account Number:</span>
-                            <p className="text-blue-900">{PAYMENT_HARDCODED.accountNumber}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">IFSC Code:</span>
-                            <p className="text-blue-900">{PAYMENT_HARDCODED.ifsc}</p>
-                          </div>
-                          <div>
-                            <span className="text-blue-700 font-medium">Phone Number:</span>
-                            <p className="text-blue-900">{PAYMENT_HARDCODED.phoneNumber}</p>
-                          </div>
-                        </div>
-                      </div>
+  // Start polling payment status
+  const startPaymentStatusPolling = async () => {
+    setPaymentStatusLoading(true);
+    setStatusCheckAttempts(0);
+    setFinalPaymentStatus(null);
+    pollPaymentStatus();
+  };
 
-                      {/* Payment Response Display */}
-                      {paymentResponse && (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-                          <h4 className="text-lg font-semibold text-green-900 mb-4">Payment Initiated Successfully!</h4>
-                          
-                          {/* Payment URL Button */}
-                          {paymentResponse.data?.paymentUrl && (
-                            <div className="text-center mb-4">
-                              <button
-                                onClick={() => handlePaymentUrlClick(paymentResponse.data.paymentUrl)}
-                                disabled={paymentUrlClicked}
-                                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-8 rounded-lg transition-colors flex items-center justify-center space-x-2 mx-auto"
-                              >
-                                <span>{paymentUrlClicked ? 'Payment Link Opened' : 'Proceed to Payment'}</span>
-                              </button>
-                              <p className="text-xs text-green-700 mt-2">
-                                Click to complete your SIP payment in a new tab
-                              </p>
-                            </div>
-                          )}
+  // Poll payment status with retries
+  const pollPaymentStatus = async (attemptNumber = 1) => {
+    if (attemptNumber > 30) {
+      setPaymentStatusLoading(false);
+      setFinalPaymentStatus('TIMEOUT');
+      setErrors({ api: 'Payment status check timeout after 30 attempts. Please check manually.' });
+      return;
+    }
 
-                          {/* Payment Status Checking */}
-                          {paymentStatusLoading && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                              <div className="flex items-center justify-center space-x-3">
-                                <Loader2 className="w-5 h-5 animate-spin text-yellow-600" />
-                                <div className="text-center">
-                                  <p className="text-yellow-800 font-medium">Checking Payment Status...</p>
-                                  <p className="text-yellow-700 text-sm">
-                                    Attempt {statusCheckAttempts} of 30
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+    setStatusCheckAttempts(attemptNumber);
 
-                      {/* Action Buttons */}
-                      <div className="flex justify-center space-x-4">
-                        <Button
-                          onClick={handleInitiatePayment}
-                          disabled={paymentInitiateLoading || paymentResponse}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          {paymentInitiateLoading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Initiating Payment...
-                            </>
-                          ) : paymentResponse ? (
-                            <>
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Payment Initiated
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Confirm & Initiate Payment
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setShowBankConfirmation(false);
-                            setShowPaymentMethods(true);
-                            setSelectedPaymentMethod(null);
-                          }}
-                          disabled={paymentInitiateLoading}
-                        >
-                          Back to Payment Methods
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+    try {
+      const transactionId = paymentResponse?.data?.transactionId || sipResponse?.transactionId;
+      const response = await fetch(`https://preprod.wyable.in/api/ondc/payment/status/${transactionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-                {/* SIP Form */}
-                {!showFolioSelection && !showPaymentMethods && !showBankConfirmation && (
-                  <div className="bg-white rounded-lg border p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* SIP Amount */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          SIP Amount (₹) <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.amount}
-                          onChange={(e) => handleInputChange('amount', e.target.value)}
-                          placeholder="Enter monthly SIP amount"
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.amount ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {errors.amount && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
-                        {constraints && (
-                          <p className="mt-1 text-sm text-gray-500">
-                            Amount should be between ₹{constraints.minAmount} - ₹{constraints.maxAmount}
-                          </p>
-                        )}
-                      </div>
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`Payment Status Check (Attempt ${attemptNumber}):`, data);
+        setPaymentStatusResponse(data);
+        
+        if (data.success && data.data && data.data.paymentStatus === 'PAID') {
+          setPaymentStatusLoading(false);
+          setFinalPaymentStatus('PAID');
+          setShowCompletionModal(true);
+          return;
+        } else if (data.success && data.data && data.data.paymentStatus === 'NOT-PAID') {
+          setPaymentStatusLoading(false);
+          setFinalPaymentStatus('NOT-PAID');
+          setErrors({ api: 'Payment was not completed. Please try again.' });
+          return;
+        }
+        
+        setTimeout(() => {
+          pollPaymentStatus(attemptNumber + 1);
+        }, 5000);
+        
+      } else {
+        setTimeout(() => {
+          pollPaymentStatus(attemptNumber + 1);
+        }, 5000);
+      }
+    } catch (error) {
+      console.error(`Payment status check error (Attempt ${attemptNumber}):`, error);
+      setTimeout(() => {
+        pollPaymentStatus(attemptNumber + 1);
+      }, 5000);
+    }
+  };
 
-                      {/* Number of Installments */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Number of Installments <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={formData.installments}
-                          onChange={(e) => handleInputChange('installments', e.target.value)}
-                          placeholder="Enter number of months"
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.installments ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {errors.installments && <p className="mt-1 text-sm text-red-600">{errors.installments}</p>}
-                        {constraints && (
-                          <p className="mt-1 text-sm text-gray-500">
-                            Between {constraints.minInstallments} - {constraints.maxInstallments} months
-                          </p>
-                        )}
-                      </div>
+  // KYC Handlers
+  const handleCompleteKYC = (kycUrl) => {
+    window.open(kycUrl, '_blank');
+    setKycUrlClicked(true);
+    startKYCStatusPolling();
+  };
 
-                      {/* SIP Date */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          SIP Date <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          value={formData.date}
-                          onChange={(e) => handleInputChange('date', e.target.value)}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                            errors.date ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        >
-                          <option value="">Select SIP date</option>
-                          {getDateOptions().map(option => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                        {errors.date && <p className="mt-1 text-sm text-red-600">{errors.date}</p>}
-                        <p className="mt-1 text-sm text-gray-500">
-                          Choose the date for monthly SIP deduction
-                        </p>
-                      </div>
+  const handleCompleteESign = async () => {
+    // First get the eSign form URL
+    try {
+      const transactionId = sipResponse?.transactionId;
+      const response = await fetch(`https://preprod.wyable.in/api/ondc/esign/status/${transactionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-                      {/* Frequency (Read-only) */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Frequency
-                        </label>
-                        <input
-                          type="text"
-                          value="Monthly"
-                          disabled
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                        />
-                        <p className="mt-1 text-sm text-gray-500">
-                          Currently only monthly SIP is supported
-                        </p>
-                      </div>
-                    </div>
+      if (response.ok) {
+        const data = await response.json();
+        console.log('E-Sign URL Response:', data);
+        
+        if (data.success && data.data?.formStatuses?.[0]?.formUrl) {
+          const eSignUrl = data.data.formStatuses[0].formUrl;
+          setESignData(data.data);
+          window.open(eSignUrl, '_blank');
+          setESignUrlClicked(true);
+          startESignStatusPolling();
+        } else {
+          setErrors({ api: 'E-Sign form not available. Please try again.' });
+        }
+      } else {
+        setErrors({ api: 'Failed to get E-Sign form. Please try again.' });
+      }
+    } catch (error) {
+      console.error('E-Sign URL Error:', error);
+      setErrors({ api: 'Failed to get E-Sign form. Please try again.' });
+    }
+  };
 
-                    {/* Total Investment Display */}
-                    {getTotalInvestment() > 0 && formData.date && (
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-blue-700 font-medium">Total Investment:</span>
-                          <span className="text-2xl font-bold text-blue-900">
-                            ₹{getTotalInvestment().toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <p className="text-blue-600">
-                            ₹{formData.amount} × {formData.installments} months
-                          </p>
-                          <p className="text-blue-600">
-                            <strong>Start Date:</strong> {generateFullDate(formData.date)}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+  // Updated handleGetPaymentMethods function with better validation and debugging
+  const handleGetPaymentMethods = async () => {
+    try {
+      setLoading(true);
+      const transactionId = sipResponse?.transactionId;
+      const maxAttempts = 60;
+      const pollInterval = 2000; // 2 seconds between attempts
+      let attempts = 0;
+      let paymentMethodsFound = false;
 
-                    {/* Submit Button */}
-                    <div className="pt-6 border-t border-gray-200">
-                      <Button
-                        onClick={handleSubmitSIP}
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Setting up SIP...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Setup SIP
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                )}
+      console.log('Starting payment methods polling for transaction:', transactionId);
+
+      const pollForPaymentMethods = async () => {
+        while (attempts < maxAttempts && !paymentMethodsFound) {
+          attempts++;
+          console.log(`Polling attempt ${attempts}/${maxAttempts}`);
+
+          try {
+            const response = await fetch(`https://preprod.wyable.in/api/ondc/getnewfoliyostatus/${transactionId}`, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              console.log(`Payment Methods Response (Attempt ${attempts}):`, data);
+              
+              // Much more flexible check for payment methods
+              if (data.success && 
+                  data.data?.paymentMethods && 
+                  Array.isArray(data.data.paymentMethods) && 
+                  data.data.paymentMethods.length > 0) {
+                
+                console.log('Found payment methods array with length:', data.data.paymentMethods.length);
+                console.log('Payment methods:', data.data.paymentMethods);
+                
+                // Just check if we have any objects in the array
+                const validPaymentMethods = data.data.paymentMethods.filter(pm => 
+                  pm && typeof pm === 'object'
+                );
+
+                console.log('Valid payment methods after filtering:', validPaymentMethods.length);
+
+                if (validPaymentMethods.length > 0) {
+                  console.log(`Payment methods found after ${attempts} attempts`);
+                  setPaymentMethodsData({
+                    transactionId: data.data.transactionId,
+                    paymentMethods: data.data.paymentMethods // Use all payment methods
+                  });
+                  setCurrentStep('payment');
+                  paymentMethodsFound = true;
+                  return; // Exit the polling loop
+                }
+              }
+              
+              // Log more details for debugging
+              console.log('Payment methods check failed:');
+              console.log('- data.success:', data.success);
+              console.log('- data.data exists:', !!data.data);
+              console.log('- paymentMethods exists:', !!(data.data && data.data.paymentMethods));
+              console.log('- paymentMethods is array:', Array.isArray(data.data?.paymentMethods));
+              console.log('- paymentMethods length:', data.data?.paymentMethods?.length);
+              console.log('- Raw paymentMethods:', data.data?.paymentMethods);
+              
+              // If we haven't found payment methods yet and haven't reached max attempts
+              if (attempts < maxAttempts) {
+                console.log(`No payment methods found yet. Waiting ${pollInterval/1000} seconds before next attempt...`);
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+              }
+              
+            } else {
+              console.error(`API request failed (Attempt ${attempts}):`, response.status, response.statusText);
+              
+              // If it's not the last attempt, continue polling
+              if (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, pollInterval));
+              }
+            }
+          } catch (fetchError) {
+            console.error(`Fetch error (Attempt ${attempts}):`, fetchError);
+            
+            // If it's not the last attempt, continue polling
+            if (attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, pollInterval));
+            }
+          }
+        }
+
+        // If we've exhausted all attempts without finding payment methods
+        if (!paymentMethodsFound) {
+          if (attempts >= maxAttempts) {
+            setErrors({ api: `Payment methods not available after ${maxAttempts} attempts. Please try again later.` });
+          } else {
+            setErrors({ api: 'Failed to get payment methods. Please try again.' });
+          }
+        }
+      };
+
+      await pollForPaymentMethods();
+
+    } catch (error) {
+      console.error('Payment Methods Error:', error);
+      setErrors({ api: 'Failed to get payment methods. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // KYC Status Polling
+  const startKYCStatusPolling = () => {
+    setKycStatusLoading(true);
+    setKycStatusAttempts(0);
+    pollKYCStatus();
+  };
+
+  const pollKYCStatus = async (attemptNumber = 1) => {
+    if (attemptNumber > 30) {
+      setKycStatusLoading(false);
+      setErrors({ api: 'KYC status check timeout after 30 attempts. Please check manually.' });
+      return;
+    }
+
+    setKycStatusAttempts(attemptNumber);
+
+    try {
+      const transactionId = sipResponse?.transactionId;
+      const response = await fetch(`https://preprod.wyable.in/api/ondc/getnewfoliyostatus/${transactionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`KYC Status Check (Attempt ${attemptNumber}):`, data);
+        
+        if (data.success && data.data?.status === 'FORM_SUBMITTED') {
+          setKycStatusLoading(false);
+          setKycData(prev => ({ ...prev, ...data.data.kycDetails }));
+          setCurrentKYCStep('esign');
+          return;
+        }
+        
+        setTimeout(() => {
+          pollKYCStatus(attemptNumber + 1);
+        }, 5000);
+        
+      } else {
+        setTimeout(() => {
+          pollKYCStatus(attemptNumber + 1);
+        }, 5000);
+      }
+    } catch (error) {
+      console.error(`KYC status check error (Attempt ${attemptNumber}):`, error);
+      setTimeout(() => {
+        pollKYCStatus(attemptNumber + 1);
+      }, 5000);
+    }
+  };
+
+  // E-Sign Status Polling
+  const startESignStatusPolling = () => {
+    setESignStatusLoading(true);
+    setESignStatusAttempts(0);
+    pollESignStatus();
+  };
+
+  const pollESignStatus = async (attemptNumber = 1) => {
+    if (attemptNumber > 30) {
+      setESignStatusLoading(false);
+      setErrors({ api: 'E-Sign status check timeout after 30 attempts. Please check manually.' });
+      return;
+    }
+
+    setESignStatusAttempts(attemptNumber);
+
+    try {
+      const transactionId = sipResponse?.transactionId;
+      const response = await fetch(`https://preprod.wyable.in/api/ondc/esign/status/${transactionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`E-Sign Status Check (Attempt ${attemptNumber}):`, data);
+        
+        if (data.success && data.data?.formStatuses?.[0]?.status === 'ESIGN_SUBMITTED') {
+          setESignStatusLoading(false);
+          setESignData(data.data);
+          setCurrentKYCStep('payment_methods');
+          return;
+        }
+        
+        setTimeout(() => {
+          pollESignStatus(attemptNumber + 1);
+        }, 5000);
+        
+      } else {
+        setTimeout(() => {
+          pollESignStatus(attemptNumber + 1);
+        }, 5000);
+      }
+    } catch (error) {
+      console.error(`E-Sign status check error (Attempt ${attemptNumber}):`, error);
+      setTimeout(() => {
+        pollESignStatus(attemptNumber + 1);
+      }, 5000);
+    }
+  };
+
+  // Step 1: Handle SIP Form Submission
+  const handleSIPSubmit = async (formData) => {
+    setLoading(true);
+    setErrors({});
+
+    try {
+      const generateFullDate = (selectedDay) => {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth();
+        const fullDate = new Date(currentYear, currentMonth, parseInt(selectedDay));
+        
+        if (fullDate < currentDate) {
+          fullDate.setMonth(currentMonth + 1);
+        }
+        
+        return fullDate.toISOString().split('T')[0];
+      };
+
+      const requestBody = {
+        type: "SIP",
+        userId: "68a2d84c3914abc028413cf0",
+        transactionId: transactionData.transactionId,
+        providerId: transactionData.providerId,
+        itemId: transactionData.itemId,
+        fulfillmentId: transactionData.fulfillmentId,
+        sip: {
+          value: parseInt(formData.amount),
+          repeat: parseInt(formData.installments),
+          date: generateFullDate(formData.date),
+          frequency: formData.frequency
+        },
+        distributor: {
+          arn: "ARN-123456",
+          euin: "E12345"
+        },
+        customer: {
+          pan: clientData.pan
+        }
+      };
+
+      console.log('SIP API Request:', requestBody);
+
+      const response = await fetch('https://viable-money-be.onrender.com/api/transaction/select', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        console.log('SIP API Response:', data);
+        setSipResponse(data.data);
+        
+        // Check if it's a new folio scenario, existing folio scenario, or both
+        if (data.data.type === 'SIP_NEW' || (data.data.existingFolios && data.data.existingFolios.length === 0)) {
+          // Only new folio available
+          setCurrentStep('folio');
+        } else if (data.data.type === 'SIP_NEW&EXISTING' || data.data.folioStatus === 'NEW_AND_EXISTING') {
+          // Both new and existing folios available
+          setCurrentStep('folio');
+        } else if (data.data.existingFolios && data.data.existingFolios.length > 0) {
+          // Only existing folios available
+          setCurrentStep('folio');
+        } else {
+          // Handle other scenarios - call parent callback
+          if (onFolioSelection) {
+            onFolioSelection(data.data, 'existing');
+          }
+        }
+      } else {
+        throw new Error(data.message || 'Failed to submit SIP');
+      }
+      
+    } catch (error) {
+      console.error('SIP API Error:', error);
+      setErrors({ api: 'Failed to submit SIP. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle completion modal close and call parent callback
+  const handleCompletionClose = () => {
+    setShowCompletionModal(false);
+    if (onFolioSelection) {
+      onFolioSelection({
+        ...sipResponse,
+        folioCreated: true,
+        paymentInitiated: true,
+        paymentResponse: paymentResponse,
+        paymentStatusResponse: paymentStatusResponse,
+        finalStatus: 'PAID'
+      }, 'new');
+    }
+  };
+
+  // Step 2: Handle Folio Creation
+  const handleFolioCreation = async () => {
+    if (!sipResponse?.newFolio) return;
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      const requestBody = {
+        transactionId: sipResponse.transactionId,
+        formUrl: sipResponse.newFolio.formUrl,
+        formId: sipResponse.newFolio.formId
+      };
+
+      console.log('Folio API Request:', requestBody);
+
+      const response = await fetch('https://viable-money-be.onrender.com/api/transaction/newfolio-selection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Folio API Response:', data);
+        
+        // Check for KYC requirement
+        if (data.data && data.data.status === 'KYC_PENDING') {
+          setKycData(data.data.kycDetails);
+          setCurrentKYCStep('kyc');
+          setCurrentStep('kyc');
+        } else if (data.data && data.data.status === 'PAYMENT_SELECTION_AVAILABLE' && data.data.paymentMethods) {
+          setPaymentMethodsData(data.data);
+          setCurrentStep('payment');
+        } else {
+          if (onFolioSelection) {
+            onFolioSelection({ ...sipResponse, folioCreated: true }, 'new');
+          }
+        }
+      } else {
+        throw new Error(data.message || 'Failed to create new folio');
+      }
+      
+    } catch (error) {
+      console.error('Folio API Error:', error);
+      setErrors({ api: 'Failed to create new folio. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2B: Handle Existing Folio Selection
+  const handleExistingFolioSelection = (folio) => {
+    setSelectedExistingFolio(folio);
+    
+    // If we have payment methods in the original response, use them
+    if (sipResponse?.paymentMethods && sipResponse.paymentMethods.length > 0) {
+      setPaymentMethodsData({
+        transactionId: sipResponse.transactionId,
+        paymentMethods: sipResponse.paymentMethods
+      });
+      setCurrentStep('payment');
+    } else {
+      // Otherwise try to get payment methods (might need different API call)
+      setErrors({ api: 'Payment methods not available for existing folio. Please try again.' });
+    }
+  };
+
+  // Step 3: Handle Payment Method Selection
+  const handlePaymentMethodSelect = (paymentMethod) => {
+    setSelectedPaymentMethod(paymentMethod);
+  };
+
+  // Step 4: Handle Payment Initiation
+  const handlePaymentInitiation = async () => {
+    if (!selectedPaymentMethod || !paymentMethodsData) return;
+
+    setLoading(true);
+    setErrors({});
+
+    try {
+      // Determine folio number: use selected existing folio or hardcoded for new folio
+      const folioNumber = selectedExistingFolio 
+        ? selectedExistingFolio.folioNumber 
+        : "4562132132/45"; // Hardcoded for new folio creation
+
+      const requestBody = {
+        transactionId: paymentMethodsData.transactionId,
+        folioNumber: folioNumber,
+        paymentIp: "192.168.1.100",
+        phoneNumber: "9876543210",
+        amount: 1000, // You'll need to pass this from form data
+        ifsc: "ICIC0001234",
+        accountNumber: "123456789012",
+        accountHolderName: "Satish K Perala",
+        paymentMethod: {
+          mode: selectedPaymentMethod.methods?.[0]?.mode || selectedPaymentMethod.availableMethods?.[0]?.mode,
+          auth: selectedPaymentMethod.methods?.[0]?.auth || selectedPaymentMethod.availableMethods?.[0]?.auth,
+          mandateLimit: selectedPaymentMethod.methods?.[0]?.mandate_limit || selectedPaymentMethod.availableMethods?.[0]?.mandateLimit || 50000,
+          mandateIdentifier: selectedPaymentMethod.methods?.[0]?.mandateIdentifier || selectedPaymentMethod.availableMethods?.[0]?.mandateIdentifier || 6
+        }
+      };
+
+      console.log('Payment API Request:', requestBody);
+
+      const response = await fetch('https://viable-money-be.onrender.com/api/transaction/initiate-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('Payment API Response:', data);
+        setPaymentResponse(data);
+      } else {
+        throw new Error(data.message || 'Failed to initiate payment');
+      }
+      
+    } catch (error) {
+      console.error('Payment API Error:', error);
+      setErrors({ api: 'Failed to initiate payment. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center p-4"
+      onClick={handleBackdropClick}
+    >
+      <div 
+        className="bg-white shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col border"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with Fund Info */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-start space-x-4 flex-1">
+            <FundIcon fund={fundData} />
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-semibold text-gray-900">{fundData?.name}</h1>
+              <p className="text-sm text-gray-600">
+                Growth • {fundData?.category || 'Mixed'} • Multi Cap
+              </p>
+            </div>
+          </div>
+          
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={handleModalClose}
+            className="text-gray-500 hover:text-gray-700 ml-4"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col relative">
+          {/* Full Popup Loading Overlay */}
+          {loading && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-10">
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {currentStep === 'form' ? 'Setting up SIP...' :
+                   currentStep === 'folio' ? 'Creating Folio...' :
+                   'Processing Payment...'}
+                </h3>
+                <p className="text-gray-600">
+                  {currentStep === 'form' ? 'Please wait while we configure your SIP investment' :
+                   currentStep === 'folio' ? 'Please wait while we create your investment folio' :
+                   'Please wait while we process your payment details'}
+                </p>
+                <div className="flex justify-center mt-4 space-x-1">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
+                      style={{ animationDelay: `${i * 0.2}s` }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Scrollable Content Area */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* Error Messages */}
+            {errors.api && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
+                  <p className="text-sm font-medium text-red-800">{errors.api}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Step Components */}
+            {currentStep === 'form' && (
+              <SIPFormComponent
+                fundData={fundData}
+                onSubmit={handleSIPSubmit}
+                loading={loading}
+                errors={errors}
+              />
+            )}
+
+            {currentStep === 'folio' && (
+              <FolioSelectionComponent
+                sipResponse={sipResponse}
+                onCreateFolio={handleFolioCreation}
+                onSelectExistingFolio={handleExistingFolioSelection}
+                loading={loading}
+                errors={errors}
+              />
+            )}
+
+            {currentStep === 'kyc' && (
+              <KYCComponent
+                kycData={kycData}
+                onCompleteKYC={handleCompleteKYC}
+                onCompleteESign={handleCompleteESign}
+                onGetPaymentMethods={handleGetPaymentMethods}
+                kycUrlClicked={kycUrlClicked}
+                eSignUrlClicked={eSignUrlClicked}
+                kycStatusLoading={kycStatusLoading}
+                eSignStatusLoading={eSignStatusLoading}
+                kycStatusAttempts={kycStatusAttempts}
+                eSignStatusAttempts={eSignStatusAttempts}
+                currentKYCStep={currentKYCStep}
+                errors={errors}
+              />
+            )}
+
+            {currentStep === 'payment' && (
+              <PaymentInitiationComponent
+                paymentMethodsData={paymentMethodsData}
+                selectedPaymentMethod={selectedPaymentMethod}
+                onPaymentMethodSelect={handlePaymentMethodSelect}
+                onInitiatePayment={handlePaymentInitiation}
+                loading={loading}
+                paymentResponse={paymentResponse}
+                onPaymentUrlClick={handlePaymentUrlClick}
+                paymentUrlClicked={paymentUrlClicked}
+                paymentStatusLoading={paymentStatusLoading}
+                statusCheckAttempts={statusCheckAttempts}
+                errors={errors}
+              />
+            )}
           </div>
         </div>
       </div>
       
       {/* Completion Modal */}
       {showCompletionModal && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full mx-4 transform transition-all">
             <div className="p-6 text-center">
               {/* Success Icon */}
@@ -1089,7 +1447,7 @@ const SIPTransaction = ({
               </p>
               
               {/* Investment Summary */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-left">
+              <div className="bg-green-50 border border-green-200 rounded p-4 mb-6 text-left">
                 <h4 className="font-semibold text-green-900 mb-3">Investment Summary</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -1097,26 +1455,14 @@ const SIPTransaction = ({
                     <span className="font-medium text-green-900">{fundData?.name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-green-700">Monthly Amount:</span>
-                    <span className="font-medium text-green-900">₹{formData.amount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Duration:</span>
-                    <span className="font-medium text-green-900">{formData.installments} months</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Start Date:</span>
-                    <span className="font-medium text-green-900">{generateFullDate(formData.date)}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-green-200 pt-2">
-                    <span className="text-green-700">Total Investment:</span>
-                    <span className="font-bold text-green-900">₹{getTotalInvestment().toLocaleString()}</span>
+                    <span className="text-green-700">Payment Status:</span>
+                    <span className="font-medium text-green-900">PAID</span>
                   </div>
                 </div>
               </div>
               
               {/* Payment Status */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
                 <div className="flex items-center justify-center space-x-2">
                   <CheckCircle className="w-5 h-5 text-blue-600" />
                   <span className="font-medium text-blue-900">Payment Status: PAID</span>
@@ -1143,22 +1489,7 @@ const SIPTransaction = ({
           </div>
         </div>
       )}
-      
-      {/* CSS Animations */}
-      <style jsx>{`
-        @keyframes loading-sweep {
-          0% {
-            transform: translateX(-100%);
-          }
-          50% {
-            transform: translateX(100%);
-          }
-          100% {
-            transform: translateX(-100%);
-          }
-        }
-      `}</style>
-    </>
+    </div>
   );
 };
 

@@ -15,14 +15,142 @@ import {
   TrendingUp,
   FileText,
   Wallet,
-  Target
+  Target,
+  IndianRupee,
+  BarChart3,
+  PieChart,
+  Info,
+  Star,
+  Heart,
+  Eye
 } from 'lucide-react';
 
 // Import transaction components
 import SIPTransaction from './siptransaction';
 import LumpsumTransaction from './lumpsumtransaction';
+import FundDetails from './funddetails';
 
-// Explore Component with Real API Integration
+// Skeleton Components
+const FundTableSkeleton = () => {
+  return (
+    <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm">
+      <div className="p-4 lg:p-6 border-b border-blue-100/40">
+        <div className="flex items-center justify-between">
+          <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
+          <div className="h-8 bg-gray-200 rounded w-20 animate-pulse"></div>
+        </div>
+      </div>
+      
+      {/* Desktop Skeleton */}
+      <div className="hidden lg:block overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-64">Fund Details</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Category</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Returns (1Y/3Y/5Y)</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Risk</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Status</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[...Array(8)].map((_, index) => (
+              <tr key={index} className="border-b border-gray-100">
+                <td className="p-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+                      <div className="h-3 bg-gray-200 rounded w-32 animate-pulse"></div>
+                    </div>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                </td>
+                <td className="p-4">
+                  <div className="flex space-x-2">
+                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                  </div>
+                </td>
+                <td className="p-4">
+                  <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                </td>
+                <td className="p-4">
+                  <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                </td>
+                <td className="p-4">
+                  <div className="flex space-x-2">
+                    <div className="h-8 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                    <div className="h-8 bg-gray-200 rounded w-8 animate-pulse"></div>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Skeleton */}
+      <div className="lg:hidden divide-y divide-gray-100">
+        {[...Array(6)].map((_, index) => (
+          <div key={index} className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3 flex-1">
+                <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-gray-200 rounded w-40 mb-2 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                </div>
+              </div>
+              <div className="h-8 bg-gray-200 rounded w-8 animate-pulse"></div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i}>
+                  <div className="h-3 bg-gray-200 rounded w-16 mb-1 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+
+            <div className="h-10 bg-gray-200 rounded-full animate-pulse"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Fund Icon Component
+const FundIcon = ({ fund, size = "w-10 h-10" }) => {
+  const getGradientColors = (name) => {
+    const colors = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-purple-500 to-pink-600',
+      'from-indigo-500 to-blue-600',
+      'from-yellow-500 to-orange-600',
+      'from-red-500 to-pink-600',
+      'from-teal-500 to-green-600'
+    ];
+    const index = name ? name.length % colors.length : 0;
+    return colors[index];
+  };
+
+  return (
+    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.name)} rounded-full flex items-center justify-center flex-shrink-0`}>
+      <div className="w-1/2 h-1/2 bg-white rounded-full opacity-80"></div>
+    </div>
+  );
+};
+
+// Main Explore Component
 const Explore = ({ onBack, investmentType }) => {
   // State management
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -34,10 +162,13 @@ const Explore = ({ onBack, investmentType }) => {
   const [apiResponseData, setApiResponseData] = useState(null);
   const [errors, setErrors] = useState({});
   
+  // Fund details view
+  const [showFundDetails, setShowFundDetails] = useState(false);
+  const [selectedFund, setSelectedFund] = useState(null);
+  
   // Transaction flow states
   const [showSIPFlow, setShowSIPFlow] = useState(false);
   const [showLumpsumFlow, setShowLumpsumFlow] = useState(false);
-  const [selectedFund, setSelectedFund] = useState(null);
   const [transactionSuccess, setTransactionSuccess] = useState(null);
   
   // Hard-coded values for investor (transaction ID comes from API)
@@ -84,6 +215,8 @@ const Explore = ({ onBack, investmentType }) => {
       });
       
       const searchData = await searchResponse.json();
+
+      console.log('Search Response:', searchData);
       
       if (searchData.success && searchData.data.transactionId) {
         setSearchTransactionId(searchData.data.transactionId);
@@ -304,6 +437,24 @@ const Explore = ({ onBack, investmentType }) => {
     };
   };
 
+  // Handle fund details view
+  const handleFundClick = (fund) => {
+    setSelectedFund(fund);
+    setShowFundDetails(true);
+  };
+
+  // Handle investment from details page
+  const handleInvestmentFromDetails = (fund, type) => {
+    const transactionData = extractTransactionData(fund.id, type);
+    
+    if (type === 'sip') {
+      setShowSIPFlow(true);
+    } else if (type === 'purchase') {
+      setShowLumpsumFlow(true);
+    }
+    setShowFundDetails(false);
+  };
+
   // Handle fund investment
   const handleInvestment = (fund, type) => {
     setSelectedFund(fund);
@@ -322,6 +473,12 @@ const Explore = ({ onBack, investmentType }) => {
     setShowLumpsumFlow(false);
     setSelectedFund(null);
     setTransactionSuccess(null);
+  };
+
+  // Handle back from fund details
+  const handleBackFromDetails = () => {
+    setShowFundDetails(false);
+    setSelectedFund(null);
   };
 
   // Handle folio selection completion for both SIP and Lumpsum
@@ -366,6 +523,17 @@ const Explore = ({ onBack, investmentType }) => {
       default: return 'text-gray-600 bg-gray-50';
     }
   };
+
+  // If showing fund details, render fund details component
+  if (showFundDetails) {
+    return (
+      <FundDetails
+        fund={selectedFund}
+        onBack={handleBackFromDetails}
+        onInvest={handleInvestmentFromDetails}
+      />
+    );
+  }
 
   // If showing transaction flows, render them
   if (showSIPFlow) {
@@ -454,7 +622,6 @@ const Explore = ({ onBack, investmentType }) => {
         
         <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 lg:p-6 space-y-4 lg:space-y-0">
           <div className="flex items-center space-x-4">
-            
             <div>
               <h1 className="text-lg lg:text-xl font-semibold text-gray-900">
                 {investmentType === 'sip' ? 'Start SIP Investment' : 'Make Lumpsum Investment'}
@@ -499,7 +666,7 @@ const Explore = ({ onBack, investmentType }) => {
       )}
 
       {/* Search and Filters */}
-      <div className="bg-white/60 backdrop-blur-sm border border-blue-200/40 p-4 lg:p-6 mb-6 shadow-sm">
+      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-6">
           {/* Search */}
           <div className="relative flex-1">
@@ -555,16 +722,8 @@ const Explore = ({ onBack, investmentType }) => {
         </div>
       </div>
 
-      {/* Loading State */}
-      {fundSearchLoading && (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
-            <p className="text-gray-600">Loading mutual funds...</p>
-            <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
-          </div>
-        </div>
-      )}
+      {/* Loading State - Show Skeleton */}
+      {fundSearchLoading && <FundTableSkeleton />}
 
       {/* Results Count */}
       {!fundSearchLoading && funds.length > 0 && (
@@ -572,7 +731,7 @@ const Explore = ({ onBack, investmentType }) => {
           <p className="text-sm text-gray-600">
             Showing {filteredFunds.length} of {funds.length} funds
           </p>
-          <Button variant="outline" size="sm" className="hidden sm:flex border-blue-200/40">
+          <Button variant="outline" size="sm" className="hidden sm:flex bg-white/50 hover:bg-white/70 border border-blue-200/40">
             <Filter className="w-4 h-4 mr-2" />
             More Filters
           </Button>
@@ -611,16 +770,19 @@ const Explore = ({ onBack, investmentType }) => {
                 {filteredFunds.map((fund, index) => (
                   <tr key={fund.id} className="border-b border-gray-100 hover:bg-white/50 transition-colors">
                     <td className="p-4 text-sm">
-                      <div>
-                        <p className="font-medium text-gray-900 mb-1">{fund.name}</p>
-                        <p className="text-gray-500 text-xs">by {fund.creator}</p>
-                        {fund.plans && (
-                          <p className="text-gray-400 text-xs mt-1">{fund.plans.length} plans available</p>
-                        )}
+                      <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleFundClick(fund)}>
+                        <FundIcon fund={fund} />
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 mb-1 hover:text-blue-600">{fund.name}</p>
+                          <p className="text-gray-500 text-xs">by {fund.creator}</p>
+                          {fund.plans && (
+                            <p className="text-gray-400 text-xs mt-1">{fund.plans.length} plans available</p>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium">
+                      <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                         {fund.category}
                       </span>
                     </td>
@@ -634,12 +796,12 @@ const Explore = ({ onBack, investmentType }) => {
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium ${getRiskColor(fund.risk)}`}>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRiskColor(fund.risk)}`}>
                         {fund.risk}
                       </span>
                     </td>
                     <td className="p-4 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium ${
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                         fund.status === 'active' 
                           ? 'bg-green-50 text-green-700' 
                           : 'bg-gray-50 text-gray-700'
@@ -652,7 +814,10 @@ const Explore = ({ onBack, investmentType }) => {
                         <Button 
                           size="sm"
                           className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-full"
-                          onClick={() => handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase');
+                          }}
                           disabled={fund.status !== 'active'}
                         >
                           {investmentType === 'sip' ? (
@@ -667,8 +832,16 @@ const Explore = ({ onBack, investmentType }) => {
                             </>
                           )}
                         </Button>
-                        <Button variant="ghost" size="sm" className="hover:bg-white/50 p-1">
-                          <MoreHorizontal className="w-4 h-4" />
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="hover:bg-white/50 p-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFundClick(fund);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -681,27 +854,30 @@ const Explore = ({ onBack, investmentType }) => {
           {/* Mobile Cards */}
           <div className="lg:hidden divide-y divide-gray-100">
             {filteredFunds.map((fund, index) => (
-              <div key={fund.id} className="p-4 hover:bg-white/50 transition-colors">
+              <div key={fund.id} className="p-4 hover:bg-white/50 transition-colors" onClick={() => handleFundClick(fund)}>
                 <div className="flex items-center justify-between mb-3">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-gray-900 mb-1">{fund.name}</h4>
-                    <p className="text-sm text-gray-500">by {fund.creator}</p>
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <FundIcon fund={fund} />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-gray-900 mb-1 hover:text-blue-600 truncate">{fund.name}</h4>
+                      <p className="text-sm text-gray-500 truncate">by {fund.creator}</p>
+                    </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2">
-                    <MoreHorizontal className="w-4 h-4" />
+                  <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2 flex-shrink-0">
+                    <Eye className="w-4 h-4" />
                   </Button>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                   <div>
                     <p className="text-gray-500 text-xs">Category</p>
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium">
+                    <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                       {fund.category}
                     </span>
                   </div>
                   <div>
                     <p className="text-gray-500 text-xs">Risk Level</p>
-                    <span className={`px-2 py-1 text-xs font-medium ${getRiskColor(fund.risk)}`}>
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRiskColor(fund.risk)}`}>
                       {fund.risk}
                     </span>
                   </div>
@@ -715,7 +891,7 @@ const Explore = ({ onBack, investmentType }) => {
                   </div>
                   <div>
                     <p className="text-gray-500 text-xs">Status</p>
-                    <span className={`px-2 py-1 text-xs font-medium ${
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       fund.status === 'active' 
                         ? 'bg-green-50 text-green-700' 
                         : 'bg-gray-50 text-gray-700'
@@ -727,7 +903,10 @@ const Explore = ({ onBack, investmentType }) => {
 
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-full"
-                  onClick={() => handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase');
+                  }}
                   disabled={fund.status !== 'active'}
                 >
                   {investmentType === 'sip' ? (
@@ -761,7 +940,7 @@ const Explore = ({ onBack, investmentType }) => {
       {/* No Results */}
       {!fundSearchLoading && filteredFunds.length === 0 && funds.length > 0 && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No funds found</h3>
@@ -772,7 +951,7 @@ const Explore = ({ onBack, investmentType }) => {
       {/* No Funds Available */}
       {!fundSearchLoading && funds.length === 0 && !errors.fundSearch && (
         <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileText className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No funds available</h3>
