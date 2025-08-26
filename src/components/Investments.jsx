@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -7,193 +7,354 @@ import {
   Star, 
   TrendingUp,
   Filter,
-  ArrowUpRight
+  ArrowUpRight,
+  Target,
+  Shield,
+  PieChart,
+  BarChart3,
+  ChevronRight,
+  MoreHorizontal,
+  Calendar,
+  Eye
 } from 'lucide-react';
 
-const Investments = () => {
+// Fund Icon Component (matching your existing theme)
+const FundIcon = ({ fund, size = "w-12 h-12" }) => {
+  const getGradientColors = (name) => {
+    const colors = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-purple-500 to-pink-600',
+      'from-indigo-500 to-blue-600',
+      'from-yellow-500 to-orange-600',
+      'from-red-500 to-pink-600',
+      'from-teal-500 to-green-600'
+    ];
+    const index = name ? name.length % colors.length : 0;
+    return colors[index];
+  };
+
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.name)} rounded-full flex items-center justify-center flex-shrink-0`}>
+      <div className="w-1/2 h-1/2 bg-white rounded-full opacity-80"></div>
+    </div>
+  );
+};
+
+const Investments = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+
+  const categories = [
+    {
+      icon: TrendingUp,
+      title: 'Equity Funds',
+      description: 'High growth potential',
+      color: 'blue',
+      count: 245
+    },
+    {
+      icon: Star,
+      title: 'Top Rated',
+      description: 'Best performers',
+      color: 'green',
+      count: 180
+    },
+    {
+      icon: Lightbulb,
+      title: 'Recommended',
+      description: 'For you',
+      color: 'purple',
+      count: 120
+    },
+    {
+      icon: ArrowUpRight,
+      title: 'Tax Saving',
+      description: 'ELSS funds',
+      color: 'orange',
+      count: 85
+    }
+  ];
+
+  const funds = [
+    {
+      name: 'Mirae Asset Large Cap Fund',
+      category: 'Large Cap',
+      returns: { '1y': '18.5%', '3y': '15.2%', '5y': '12.8%' },
+      rating: 5,
+      risk: 'Moderate',
+      minInvestment: '₹500',
+      nav: '156.43',
+      aum: '₹25,847 Cr',
+      expenseRatio: '1.57%'
+    },
+    {
+      name: 'Axis Small Cap Fund',
+      category: 'Small Cap',
+      returns: { '1y': '24.8%', '3y': '18.9%', '5y': '16.3%' },
+      rating: 4,
+      risk: 'High',
+      minInvestment: '₹500',
+      nav: '89.12',
+      aum: '₹8,942 Cr',
+      expenseRatio: '1.89%'
+    },
+    {
+      name: 'HDFC Hybrid Equity Fund',
+      category: 'Hybrid',
+      returns: { '1y': '14.2%', '3y': '12.6%', '5y': '11.1%' },
+      rating: 4,
+      risk: 'Low to Moderate',
+      minInvestment: '₹100',
+      nav: '78.65',
+      aum: '₹15,234 Cr',
+      expenseRatio: '1.32%'
+    },
+    {
+      name: 'SBI Blue Chip Fund',
+      category: 'Large Cap',
+      returns: { '1y': '16.7%', '3y': '13.9%', '5y': '11.5%' },
+      rating: 4,
+      risk: 'Moderate',
+      minInvestment: '₹500',
+      nav: '134.21',
+      aum: '₹32,156 Cr',
+      expenseRatio: '1.45%'
+    }
+  ];
+
+  const handleInvest = (fund) => {
+    console.log('Invest in:', fund);
+  };
+
+  const handleViewDetails = (fund) => {
+    console.log('View details for:', fund);
+  };
+
+  return (
+    <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Explore Investments</h1>
-        <p className="text-gray-600">Discover and invest in top-performing mutual funds</p>
+      <div className="mb-6 lg:mb-8">
+        <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2 lg:mb-3">Explore Investments</h1>
+        <p className="text-gray-600 text-base lg:text-lg">Discover and invest in top-performing mutual funds</p>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Input
-              type="search"
-              placeholder="Search mutual funds..."
-              className="pl-10 h-11"
-            />
-            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
+        <div className="absolute -top-3 left-4 sm:left-8 bg-blue-50 px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+          Search & Filter
+        </div>
+        
+        <div className="p-4 lg:p-6">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Input
+                type="search"
+                placeholder="Search mutual funds by name, category, or AMC..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+              <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            </div>
+            <Button variant="outline" className="h-12 px-6 border-gray-300 hover:border-gray-400">
+              <Filter className="w-4 h-4 mr-2" />
+              Advanced Filters
+            </Button>
           </div>
-          <Button variant="outline" className="h-11 px-6">
+        </div>
+      </div>
+
+      {/* Available Mutual Funds */}
+      <div className="bg-white border border-gray-200 overflow-hidden mb-6 lg:mb-8">
+        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-gray-200">
+          <h2 className="text-lg lg:text-xl font-semibold text-gray-900">Available Mutual Funds</h2>
+          <Button variant="outline" className="border-gray-300 hover:border-gray-400">
             <Filter className="w-4 h-4 mr-2" />
-            Filters
+            Filter
           </Button>
         </div>
-      </div>
 
-      {/* Quick Categories */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white border border-blue-200 p-4 rounded-xl hover:shadow-md transition-shadow cursor-pointer">
-          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-            <TrendingUp className="w-5 h-5 text-blue-600" />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-1">Equity Funds</h3>
-          <p className="text-sm text-gray-600">High growth potential</p>
+        {/* Desktop Table */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="text-left p-4 text-xs font-medium text-gray-700">Fund Details</th>
+                <th className="text-left p-4 text-xs font-medium text-gray-700">Category</th>
+                <th className="text-left p-4 text-xs font-medium text-gray-700">Returns (1Y/3Y/5Y)</th>
+                <th className="text-left p-4 text-xs font-medium text-gray-700">Risk</th>
+                <th className="text-left p-4 text-xs font-medium text-gray-700">Status</th>
+                <th className="text-left p-4 text-xs font-medium text-gray-700">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {funds.map((fund, index) => (
+                <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                  <td className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <FundIcon fund={fund} size="w-8 h-8" />
+                      <div>
+                        <h3 className="text-sm font-medium text-gray-900">{fund.name}</h3>
+                        <p className="text-xs text-gray-500">by ABC Mutual Fund</p>
+                        <p className="text-xs text-gray-400">1 plans available</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-blue-600 text-xs font-medium">{fund.category}</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex space-x-4 text-xs">
+                      <span className="text-green-600 font-medium">{fund.returns['1y']}</span>
+                      <span className="text-green-600 font-medium">{fund.returns['3y']}</span>
+                      <span className="text-green-600 font-medium">{fund.returns['5y']}</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    <span className={`text-xs font-medium ${
+                      fund.risk === 'Low' ? 'text-green-600' :
+                      fund.risk === 'Moderate' ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {fund.risk}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <span className="text-green-600 text-xs font-medium">active</span>
+                  </td>
+                  <td className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <Button 
+                        size="sm"
+                        onClick={() => handleInvest(fund)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-xs flex items-center"
+                      >
+                        <Calendar className="w-3 h-3 mr-1" />
+                        SIP
+                      </Button>
+                      <button 
+                        onClick={() => handleViewDetails(fund)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <Eye className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <div className="bg-white border border-green-200 p-4 rounded-xl hover:shadow-md transition-shadow cursor-pointer">
-          <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-3">
-            <Star className="w-5 h-5 text-green-600" />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-1">Top Rated</h3>
-          <p className="text-sm text-gray-600">Best performers</p>
-        </div>
-
-        <div className="bg-white border border-purple-200 p-4 rounded-xl hover:shadow-md transition-shadow cursor-pointer">
-          <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mb-3">
-            <Lightbulb className="w-5 h-5 text-purple-600" />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-1">Recommended</h3>
-          <p className="text-sm text-gray-600">For you</p>
-        </div>
-
-        <div className="bg-white border border-orange-200 p-4 rounded-xl hover:shadow-md transition-shadow cursor-pointer">
-          <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mb-3">
-            <ArrowUpRight className="w-5 h-5 text-orange-600" />
-          </div>
-          <h3 className="font-semibold text-gray-900 mb-1">Tax Saving</h3>
-          <p className="text-sm text-gray-600">ELSS funds</p>
-        </div>
-      </div>
-
-      {/* Featured Funds */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Top Mutual Funds</h2>
-        </div>
-
-        <div className="divide-y divide-gray-100">
-          {[
-            {
-              name: 'Mirae Asset Large Cap Fund',
-              category: 'Large Cap',
-              returns: { '1y': '18.5%', '3y': '15.2%', '5y': '12.8%' },
-              rating: 5,
-              risk: 'Moderate',
-              minInvestment: '₹500'
-            },
-            {
-              name: 'Axis Small Cap Fund',
-              category: 'Small Cap',
-              returns: { '1y': '24.8%', '3y': '18.9%', '5y': '16.3%' },
-              rating: 4,
-              risk: 'High',
-              minInvestment: '₹500'
-            },
-            {
-              name: 'HDFC Hybrid Equity Fund',
-              category: 'Hybrid',
-              returns: { '1y': '14.2%', '3y': '12.6%', '5y': '11.1%' },
-              rating: 4,
-              risk: 'Low to Moderate',
-              minInvestment: '₹100'
-            },
-            {
-              name: 'SBI Blue Chip Fund',
-              category: 'Large Cap',
-              returns: { '1y': '16.7%', '3y': '13.9%', '5y': '11.5%' },
-              rating: 4,
-              risk: 'Moderate',
-              minInvestment: '₹500'
-            }
-          ].map((fund, index) => (
-            <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Mobile Cards */}
+        <div className="lg:hidden divide-y divide-gray-100">
+          {funds.map((fund, index) => (
+            <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
+              <div className="flex items-start space-x-3 mb-3">
+                <FundIcon fund={fund} size="w-8 h-8" />
                 <div className="flex-1">
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-1">{fund.name}</h3>
-                      <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                        {fund.category}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${i < fund.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4 mb-3">
-                    <div>
-                      <p className="text-xs text-gray-500">1Y Returns</p>
-                      <p className="text-sm font-semibold text-green-600">{fund.returns['1y']}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">3Y Returns</p>
-                      <p className="text-sm font-semibold text-green-600">{fund.returns['3y']}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">5Y Returns</p>
-                      <p className="text-sm font-semibold text-green-600">{fund.returns['5y']}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span>Risk: {fund.risk}</span>
-                    <span>Min: {fund.minInvestment}</span>
-                  </div>
+                  <h3 className="text-sm font-medium text-gray-900">{fund.name}</h3>
+                  <p className="text-xs text-gray-500">by ABC Mutual Fund</p>
+                  <p className="text-xs text-gray-400">1 plans available</p>
                 </div>
-                
-                <div className="flex flex-col sm:flex-row gap-2 lg:ml-6">
-                  <Button variant="outline" size="sm">
-                    View Details
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-xs mb-4">
+                <div>
+                  <span className="text-gray-500">Category:</span>
+                  <span className="text-blue-600 font-medium ml-2">{fund.category}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Risk:</span>
+                  <span className={`font-medium ml-2 ${
+                    fund.risk === 'Low' ? 'text-green-600' :
+                    fund.risk === 'Moderate' ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>
+                    {fund.risk}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-gray-500 text-xs mb-1">Returns (1Y/3Y/5Y):</p>
+                <div className="flex space-x-4 text-xs">
+                  <span className="text-green-600 font-medium">{fund.returns['1y']}</span>
+                  <span className="text-green-600 font-medium">{fund.returns['3y']}</span>
+                  <span className="text-green-600 font-medium">{fund.returns['5y']}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-green-600 font-medium text-xs">active</span>
+                <div className="flex items-center space-x-3">
+                  <Button 
+                    size="sm"
+                    onClick={() => handleInvest(fund)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 text-xs flex items-center"
+                  >
+                    <Calendar className="w-3 h-3 mr-1" />
+                    SIP
                   </Button>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                    Invest Now
-                  </Button>
+                  <button 
+                    onClick={() => handleViewDetails(fund)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <Eye className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
             </div>
           ))}
         </div>
-
-        <div className="p-6 border-t border-gray-200 text-center">
-          <Button variant="outline" className="px-8">
-            View All Funds
-          </Button>
-        </div>
       </div>
 
-      {/* Investment Categories */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Investment Categories</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-6 rounded-xl">
-            <h3 className="font-semibold text-gray-900 mb-2">Equity Funds</h3>
-            <p className="text-sm text-gray-600 mb-4">Invest in stocks for long-term wealth creation</p>
-            <Button variant="outline" size="sm">Explore</Button>
+      {/* Investment Insights */}
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 relative">
+        <div className="absolute -top-3 left-4 sm:left-8 bg-blue-50 px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+          Investment Insights
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-green-600" />
+            </div>
+            <div className="pl-6 lg:pl-8">
+              <h3 className="font-semibold text-gray-900 mb-2">Market Insights</h3>
+              <p className="text-sm text-gray-600 mb-4">Get detailed analysis and market trends to make informed investment decisions.</p>
+              <Button variant="outline" size="sm" className="border-green-300 hover:bg-green-50">
+                View Insights
+              </Button>
+            </div>
           </div>
-          
-          <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 p-6 rounded-xl">
-            <h3 className="font-semibold text-gray-900 mb-2">Debt Funds</h3>
-            <p className="text-sm text-gray-600 mb-4">Stable returns with lower risk</p>
-            <Button variant="outline" size="sm">Explore</Button>
+
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <Target className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+            </div>
+            <div className="pl-6 lg:pl-8">
+              <h3 className="font-semibold text-gray-900 mb-2">Goal Planning</h3>
+              <p className="text-sm text-gray-600 mb-4">Plan your investments based on your financial goals and risk appetite.</p>
+              <Button variant="outline" size="sm" className="border-blue-300 hover:bg-blue-50">
+                Start Planning
+              </Button>
+            </div>
           </div>
-          
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 p-6 rounded-xl">
-            <h3 className="font-semibold text-gray-900 mb-2">Hybrid Funds</h3>
-            <p className="text-sm text-gray-600 mb-4">Balanced approach with equity and debt</p>
-            <Button variant="outline" size="sm">Explore</Button>
+
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <Lightbulb className="w-5 h-5 lg:w-6 lg:h-6 text-purple-600" />
+            </div>
+            <div className="pl-6 lg:pl-8">
+              <h3 className="font-semibold text-gray-900 mb-2">Expert Advice</h3>
+              <p className="text-sm text-gray-600 mb-4">Get personalized investment recommendations from our financial experts.</p>
+              <Button variant="outline" size="sm" className="border-purple-300 hover:bg-purple-50">
+                Get Advice
+              </Button>
+            </div>
           </div>
         </div>
       </div>

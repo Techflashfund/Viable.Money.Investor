@@ -96,7 +96,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
     <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
       {/* Portfolio Summary Cards */}
       <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
-        <div className="absolute -top-3 left-4 sm:left-8 bg-white px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+        <div className="absolute -top-3 left-4 sm:left-8 bg-blue-50 px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Portfolio Overview
         </div>
         
@@ -138,9 +138,9 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
       </div>
 
       {/* Portfolio Performance Chart */}
-      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow mb-6 lg:mb-8">
-        <div className="p-4 lg:p-6 border-b border-blue-100/40">
-          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
+      <div className="mb-6 lg:mb-8">
+        <div className="p-4 lg:p-6">
+          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between mb-4 lg:mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Portfolio Performance</h3>
             <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
               <div className="flex flex-wrap items-center gap-4">
@@ -156,9 +156,7 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
               <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40 w-fit">6M</Button>
             </div>
           </div>
-        </div>
-        
-        <div className="p-4 lg:p-6">
+          
           <div className="mb-4">
             <p className="text-sm text-gray-600">As of today</p>
             <p className="text-xl lg:text-2xl font-bold text-gray-900">₹2,45,680</p>
@@ -304,11 +302,11 @@ const PortfolioAnalytics = () => {
     <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
       {/* Performance Metrics */}
       <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
-        <div className="absolute -top-3 left-4 sm:left-8 bg-white px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+        <div className="absolute -top-3 left-4 sm:left-8 bg-blue-50 px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Performance Metrics
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
           <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
             <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
               <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
@@ -336,6 +334,16 @@ const PortfolioAnalytics = () => {
             <div className="pl-6 lg:pl-8">
               <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">1.82</p>
               <p className="text-sm text-gray-600 truncate">Sharpe Ratio</p>
+            </div>
+          </div>
+
+          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-orange-600 transform rotate-180" />
+            </div>
+            <div className="pl-6 lg:pl-8">
+              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">-8.5%</p>
+              <p className="text-sm text-gray-600 truncate">Max Drawdown</p>
             </div>
           </div>
         </div>

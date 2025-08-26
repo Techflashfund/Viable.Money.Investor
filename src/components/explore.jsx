@@ -22,7 +22,11 @@ import {
   Info,
   Star,
   Heart,
-  Eye
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 
 // Import transaction components
@@ -48,8 +52,8 @@ const FundTableSkeleton = () => {
             <tr className="border-b border-gray-200">
               <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-64">Fund Details</th>
               <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Category</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Returns (1Y/3Y/5Y)</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Risk</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Investment Types</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Min Amount</th>
               <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Status</th>
               <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Action</th>
             </tr>
@@ -71,7 +75,6 @@ const FundTableSkeleton = () => {
                 </td>
                 <td className="p-4">
                   <div className="flex space-x-2">
-                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
                     <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
                     <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
                   </div>
@@ -152,15 +155,38 @@ const FundIcon = ({ fund, size = "w-10 h-10" }) => {
 
 // Main Explore Component
 const Explore = ({ onBack, investmentType }) => {
-  // State management
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  // State management for filters and pagination
+  const [filters, setFilters] = useState({
+    search: '',
+    category: '',
+    amc: '',
+    investmentType: '',
+    minAmount: '',
+    maxAmount: '',
+    isin: '',
+    sortBy: 'fundName',
+    sortOrder: 'asc'
+  });
+  
+  // Separate search term state for immediate UI updates
   const [searchTerm, setSearchTerm] = useState('');
+  
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    totalPages: 1,
+    totalFunds: 0,
+    hasNext: false,
+    hasPrev: false
+  });
+  
   const [loading, setLoading] = useState(false);
   const [fundSearchLoading, setFundSearchLoading] = useState(false);
   const [funds, setFunds] = useState([]);
-  const [searchTransactionId, setSearchTransactionId] = useState('');
-  const [apiResponseData, setApiResponseData] = useState(null);
+  const [amcs, setAmcs] = useState([]);
   const [errors, setErrors] = useState({});
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   
   // Fund details view
   const [showFundDetails, setShowFundDetails] = useState(false);
@@ -171,7 +197,7 @@ const Explore = ({ onBack, investmentType }) => {
   const [showLumpsumFlow, setShowLumpsumFlow] = useState(false);
   const [transactionSuccess, setTransactionSuccess] = useState(null);
   
-  // Hard-coded values for investor (transaction ID comes from API)
+  // Hard-coded values for investor
   const HARDCODED_VALUES = {
     userId: "68788d1562333d9d86a53daf",
     clientData: {
@@ -185,256 +211,256 @@ const Explore = ({ onBack, investmentType }) => {
   };
 
   const categories = [
-    { id: 'all', name: 'All Funds', count: 0 },
-    { id: 'equity', name: 'Equity', count: 0 },
-    { id: 'debt', name: 'Debt', count: 0 },
-    { id: 'hybrid', name: 'Hybrid', count: 0 },
-    { id: 'tax-saver', name: 'Tax Saver', count: 0 }
+    { id: '', name: 'All Categories' },
+    { id: 'equity', name: 'Equity' },
+    { id: 'debt', name: 'Debt' },
+    { id: 'hybrid', name: 'Hybrid' },
+    { id: 'elss', name: 'ELSS' }
   ];
 
-  // Fetch funds on component mount
+  const investmentTypes = [
+    { id: '', name: 'All Types' },
+    { id: 'SIP', name: 'SIP' },
+    { id: 'LUMPSUM', name: 'Lumpsum' },
+    { id: 'REDEMPTION', name: 'Redemption' }
+  ];
+
+  const sortOptions = [
+    { value: 'fundName', label: 'Fund Name' },
+    { value: 'amcName', label: 'AMC Name' },
+    { value: 'minSipAmount', label: 'Min SIP Amount' },
+    { value: 'minLumpsumAmount', label: 'Min Lumpsum Amount' }
+  ];
+
+  // Fetch AMCs and funds on component mount
   useEffect(() => {
-    searchFunds();
+    fetchAmcs();
+    fetchFunds();
   }, []);
 
-  const searchFunds = async () => {
-    try {
-      setFundSearchLoading(true);
-      setFunds([]);
-      setErrors({});
-      
-      // First, initiate search
-      const searchResponse = await fetch('https://preprod.wyable.in/api/ondc/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-           userId: HARDCODED_VALUES.userId
-        })
-      });
-      
-      const searchData = await searchResponse.json();
+  // Debounced search effect - update filters.search after user stops typing
+  useEffect(() => {
+    const searchDebounce = setTimeout(() => {
+      if (filters.search !== searchTerm) {
+        setFilters(prev => ({ ...prev, search: searchTerm }));
+        setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page
+      }
+    }, 500); // 500ms delay
 
-      console.log('Search Response:', searchData);
+    return () => clearTimeout(searchDebounce);
+  }, [searchTerm]);
+
+  // Fetch funds when filters or pagination change
+  useEffect(() => {
+    fetchFunds();
+  }, [filters, pagination.page, pagination.limit]);
+
+  const fetchAmcs = async () => {
+    try {
+      const response = await fetch('https://investment.flashfund.in/api/ondc/amcs');
+      const data = await response.json();
       
-      if (searchData.success && searchData.data.transactionId) {
-        setSearchTransactionId(searchData.data.transactionId);
-        
-        // Poll for results
-        await pollForFundResults(searchData.data.transactionId);
-      } else {
-        throw new Error('Failed to initiate fund search');
+      if (data.success && data.data) {
+        const amcOptions = [
+          { id: '', name: 'All AMCs' },
+          ...data.data
+            .filter(amc => amc._id && amc._id.trim() !== '') // Filter out empty AMC names
+            .map(amc => ({
+              id: amc._id,
+              name: `${amc._id} (${amc.count})`,
+              value: amc._id // Store the actual value to send to API
+            }))
+        ];
+        setAmcs(amcOptions);
       }
     } catch (error) {
-      console.error('Error searching funds:', error);
+      console.error('Error fetching AMCs:', error);
+    }
+  };
+
+  const fetchFunds = async () => {
+    try {
+      setFundSearchLoading(true);
+      setErrors({});
+      
+      // Build query parameters with AMC filtering workaround
+      let queryParams = {
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      };
+      
+      // Add other filters
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== '') {
+          if (key === 'amc') {
+            // For AMC filtering, use both amc parameter and search parameter
+            // This helps catch funds where amcName is empty but scheme name contains AMC name
+            queryParams[key] = value;
+            
+            // Also add search parameter to catch funds by scheme name
+            const amcSearchTerms = {
+              '360 ONE Mutual Fund': '360 ONE',
+              'HDFC Mutual Fund': 'HDFC',
+              'ICICI Prudential Mutual Fund': 'ICICI',
+              'Axis Mutual Fund': 'Axis',
+              'Kotak Mahindra Mutual Fund': 'Kotak',
+              'Aditya Birla Sun Life Mutual Fund': 'Aditya Birla',
+              'DSP Mutual Fund': 'DSP',
+              'Motilal Oswal Mutual Fund': 'Motilal Oswal',
+              'Nippon India Mutual Fund': 'Nippon',
+              'Quant Mutual Fund': 'Quant',
+              'UTI Mutual Fund': 'UTI'
+            };
+            
+            // If we have a search term for this AMC, add it (only if no explicit search is set)
+            if (amcSearchTerms[value] && !filters.search) {
+              queryParams.search = amcSearchTerms[value];
+            }
+          } else {
+            queryParams[key] = value;
+          }
+        }
+      });
+      
+      const params = new URLSearchParams(queryParams);
+      
+      // Debug: Log the request URL
+      const requestUrl = `https://investment.flashfund.in/api/ondc/funds?${params}`;
+      console.log('Fetching funds with URL:', requestUrl);
+      console.log('Applied filters:', filters);
+      
+      const response = await fetch(requestUrl);
+      const data = await response.json();
+      
+      console.log('API Response data length:', data.data?.length || 0);
+      
+      if (data.success && data.data) {
+        // Filter out funds with empty fulfillments array
+        const activeFunds = data.data.filter(fund => 
+          fund.fulfillments && fund.fulfillments.length > 0
+        );
+        
+        console.log('Active funds count:', activeFunds.length);
+        console.log('Filtered by AMC:', filters.amc);
+        
+        const processedFunds = processFundsData(activeFunds);
+        setFunds(processedFunds);
+        
+        // Update pagination info
+        if (data.pagination) {
+          setPagination(prev => ({
+            ...prev,
+            totalPages: data.pagination.totalPages || 1,
+            totalFunds: data.pagination.totalFunds || 0,
+            hasNext: data.pagination.hasNext || false,
+            hasPrev: data.pagination.hasPrev || false
+          }));
+        }
+      } else {
+        setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
+      }
+      
+      setFundSearchLoading(false);
+    } catch (error) {
+      console.error('Error fetching funds:', error);
       setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
       setFundSearchLoading(false);
     }
   };
 
-  const pollForFundResults = async (transactionId, maxAttempts = 10, currentAttempt = 0) => {
-    try {
-      const response = await fetch('https://preprod.wyable.in/api/fund/find-select-response-by-transaction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          transactionId: transactionId
-        })
-      });
+  const processFundsData = (rawFunds) => {
+    return rawFunds.map(fund => {
+      // Extract AMC name with better logic
+      let amcName = 'N/A';
       
-      const data = await response.json();
-      
-      if (data && data.message && data.message.catalog) {
-        // Store the complete API response for transaction details extraction
-        setApiResponseData(data);
-        
-        // Successfully got fund data
-        const extractedFunds = extractFundsFromResponse(data);
-        setFunds(extractedFunds);
-        setFundSearchLoading(false);
-      } else if (currentAttempt < maxAttempts) {
-        // Retry after 2 seconds
-        setTimeout(() => {
-          pollForFundResults(transactionId, maxAttempts, currentAttempt + 1);
-        }, 2000);
-      } else {
-        // Max attempts reached
-        throw new Error('Fund search timeout');
+      if (fund.amcName && fund.amcName.trim() !== '') {
+        amcName = fund.amcName;
+      } else if (fund.schemeName) {
+        // Try to extract AMC name from scheme name
+        const schemeName = fund.schemeName;
+        if (schemeName.includes('360 ONE')) {
+          amcName = '360 ONE Mutual Fund';
+        } else if (schemeName.includes('HDFC')) {
+          amcName = 'HDFC Mutual Fund';
+        } else if (schemeName.includes('ICICI')) {
+          amcName = 'ICICI Prudential Mutual Fund';
+        } else if (schemeName.includes('Axis')) {
+          amcName = 'Axis Mutual Fund';
+        } else if (schemeName.includes('Kotak')) {
+          amcName = 'Kotak Mahindra Mutual Fund';
+        } else if (schemeName.includes('Aditya Birla')) {
+          amcName = 'Aditya Birla Sun Life Mutual Fund';
+        } else if (schemeName.includes('DSP')) {
+          amcName = 'DSP Mutual Fund';
+        } else if (schemeName.includes('Motilal Oswal')) {
+          amcName = 'Motilal Oswal Mutual Fund';
+        } else if (schemeName.includes('Nippon')) {
+          amcName = 'Nippon India Mutual Fund';
+        } else if (schemeName.includes('Quant')) {
+          amcName = 'Quant Mutual Fund';
+        } else if (schemeName.includes('UTI')) {
+          amcName = 'UTI Mutual Fund';
+        }
       }
-    } catch (error) {
-      console.error('Error polling for fund results:', error);
-      setErrors({ fundSearch: 'Failed to fetch fund results. Please try again.' });
-      setFundSearchLoading(false);
+
+      return {
+        id: fund.fundId || fund.itemId || fund._id,
+        name: fund.fundName || fund.schemeName || 'N/A',
+        creator: amcName,
+        category: getCategoryDisplayName(fund.primaryCategory),
+        type: fund.primaryCategory || 'mixed',
+        status: fund.isActive ? 'active' : 'inactive',
+        providerId: fund.providerId,
+        fulfillments: fund.fulfillments || [],
+        investmentTypes: fund.investmentTypes || [],
+        minSip: fund.minSipAmount || null,
+        minLumpsum: fund.minLumpsumAmount || null,
+        maxSip: fund.maxSipAmount || null,
+        isin: fund.isin || fund.planIdentifiers?.isin || null,
+        planOptions: fund.planOptions || null,
+        categories: fund.categories || [],
+        rawData: fund // Store original data for transaction processing
+      };
+    });
+  };
+
+  const getCategoryDisplayName = (primaryCategory) => {
+    if (!primaryCategory) return 'Mixed';
+    
+    if (primaryCategory.includes('equity') || primaryCategory.includes('EQUITY')) return 'Equity';
+    if (primaryCategory.includes('debt') || primaryCategory.includes('DEBT')) return 'Debt';
+    if (primaryCategory.includes('hybrid') || primaryCategory.includes('HYBRID')) return 'Hybrid';
+    if (primaryCategory.includes('elss') || primaryCategory.includes('ELSS')) return 'ELSS';
+    
+    return 'Mixed';
+  };
+
+  // Handle filter changes
+  const handleFilterChange = (key, value) => {
+    if (key === 'search') {
+      // Handle search separately to avoid focus issues
+      setSearchTerm(value);
+      return;
+    }
+    
+    setFilters(prev => ({ ...prev, [key]: value }));
+    setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page when filters change
+  };
+
+  // Handle search input change
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+  };
+
+  // Handle pagination changes
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setPagination(prev => ({ ...prev, page: newPage }));
     }
   };
 
-  const extractFundsFromResponse = (responseData) => {
-    const extractedFunds = [];
-    
-    if (responseData.message?.catalog?.providers) {
-      responseData.message.catalog.providers.forEach(provider => {
-        if (provider.items) {
-          provider.items.forEach(item => {
-            if (item.descriptor?.code === 'SCHEME') {
-              // Extract scheme information
-              const fund = {
-                id: item.id,
-                name: item.descriptor.name,
-                creator: item.creator?.descriptor?.name || 'Unknown',
-                categoryIds: item.category_ids || [],
-                status: 'active',
-                providerId: provider.id,
-                category: 'Mixed', // Default category
-                type: 'Mixed', // Default type
-                returns: {
-                  '1y': 'N/A',
-                  '3y': 'N/A',
-                  '5y': 'N/A'
-                },
-                minSip: 500,
-                minLumpsum: 5000,
-                expenseRatio: 'N/A',
-                aum: 'N/A',
-                risk: 'Moderate'
-              };
-
-              // Extract additional details from tags
-              if (item.tags) {
-                item.tags.forEach(tag => {
-                  if (tag.descriptor?.code === 'SCHEME_INFORMATION') {
-                    tag.list?.forEach(listItem => {
-                      switch (listItem.descriptor?.code) {
-                        case 'STATUS':
-                          fund.status = listItem.value;
-                          break;
-                        case 'LOCKIN_PERIOD_IN_DAYS':
-                          fund.lockInPeriod = listItem.value;
-                          break;
-                        case 'ENTRY_LOAD':
-                          fund.entryLoad = listItem.value;
-                          break;
-                        case 'EXIT_LOAD':
-                          fund.exitLoad = listItem.value;
-                          break;
-                      }
-                    });
-                  }
-                });
-              }
-
-              extractedFunds.push(fund);
-            } else if (item.descriptor?.code === 'SCHEME_PLAN') {
-              // Find parent scheme and add plan details
-              const parentFund = extractedFunds.find(f => f.id === item.parent_item_id);
-              if (parentFund) {
-                if (!parentFund.plans) parentFund.plans = [];
-                
-                const plan = {
-                  id: item.id,
-                  name: item.descriptor.name,
-                  fulfillmentIds: item.fulfillment_ids || []
-                };
-
-                // Extract plan details from tags
-                if (item.tags) {
-                  item.tags.forEach(tag => {
-                    if (tag.descriptor?.code === 'PLAN_IDENTIFIERS') {
-                      tag.list?.forEach(listItem => {
-                        switch (listItem.descriptor?.code) {
-                          case 'ISIN':
-                            plan.isin = listItem.value;
-                            break;
-                          case 'AMFI_IDENTIFIER':
-                            plan.amfiId = listItem.value;
-                            break;
-                        }
-                      });
-                    } else if (tag.descriptor?.code === 'PLAN_OPTIONS') {
-                      tag.list?.forEach(listItem => {
-                        switch (listItem.descriptor?.code) {
-                          case 'PLAN':
-                            plan.planType = listItem.value;
-                            break;
-                          case 'OPTION':
-                            plan.option = listItem.value;
-                            break;
-                        }
-                      });
-                    }
-                  });
-                }
-
-                parentFund.plans.push(plan);
-              }
-            }
-          });
-        }
-
-        // Extract fulfillment information
-        if (provider.fulfillments) {
-          provider.fulfillments.forEach(fulfillment => {
-            const relatedFunds = extractedFunds.filter(fund => 
-              fund.plans?.some(plan => plan.fulfillmentIds.includes(fulfillment.id))
-            );
-            
-            relatedFunds.forEach(fund => {
-              if (!fund.fulfillments) fund.fulfillments = [];
-              
-              const fulfillmentInfo = {
-                id: fulfillment.id,
-                type: fulfillment.type,
-                thresholds: {}
-              };
-
-              // Extract thresholds
-              if (fulfillment.tags) {
-                fulfillment.tags.forEach(tag => {
-                  if (tag.descriptor?.code === 'THRESHOLDS') {
-                    tag.list?.forEach(listItem => {
-                      fulfillmentInfo.thresholds[listItem.descriptor?.code] = listItem.value;
-                    });
-                  }
-                });
-              }
-
-              fund.fulfillments.push(fulfillmentInfo);
-            });
-          });
-        }
-      });
-    }
-    
-    return extractedFunds;
-  };
-
-  // Extract transaction data needed for API call
-  const extractTransactionData = (selectedFundId, transactionType) => {
-    if (!apiResponseData || !selectedFundId) return null;
-
-    const selectedFund = funds.find(f => f.id === selectedFundId);
-    if (!selectedFund) return null;
-
-    let fulfillment;
-    
-    if (transactionType === 'sip') {
-      // Get SIP fulfillment ID (prioritize monthly SIP)
-      fulfillment = selectedFund.fulfillments?.find(f => 
-        f.type === 'SIP' && (f.id.includes('MONTH') || f.id.includes('P1M'))
-      ) || selectedFund.fulfillments?.find(f => f.type === 'SIP');
-    } else if (transactionType === 'purchase') {
-      // Get LUMPSUM fulfillment ID
-      fulfillment = selectedFund.fulfillments?.find(f => f.type === 'LUMPSUM');
-    }
-
-    return {
-      transactionId: apiResponseData.context?.transaction_id || searchTransactionId,
-      providerId: selectedFund.providerId,
-      itemId: selectedFundId,
-      fulfillmentId: fulfillment?.id || ''
-    };
+  const handlePageSizeChange = (newLimit) => {
+    setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
   };
 
   // Handle fund details view
@@ -445,8 +471,6 @@ const Explore = ({ onBack, investmentType }) => {
 
   // Handle investment from details page
   const handleInvestmentFromDetails = (fund, type) => {
-    const transactionData = extractTransactionData(fund.id, type);
-    
     if (type === 'sip') {
       setShowSIPFlow(true);
     } else if (type === 'purchase') {
@@ -458,7 +482,6 @@ const Explore = ({ onBack, investmentType }) => {
   // Handle fund investment
   const handleInvestment = (fund, type) => {
     setSelectedFund(fund);
-    const transactionData = extractTransactionData(fund.id, type);
     
     if (type === 'sip') {
       setShowSIPFlow(true);
@@ -504,23 +527,45 @@ const Explore = ({ onBack, investmentType }) => {
     }, 3000);
   };
 
-  // Filter funds
-  const filteredFunds = funds.filter(fund => {
-    const matchesCategory = selectedCategory === 'all' || 
-      fund.type.toLowerCase().includes(selectedCategory) || 
-      fund.category.toLowerCase().includes(selectedCategory);
-    const matchesSearch = fund.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fund.creator.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const getInvestmentTypeBadges = (investmentTypes) => {
+    if (!investmentTypes || investmentTypes.length === 0) return null;
+    
+    return investmentTypes.slice(0, 2).map(type => (
+      <span key={type} className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full mr-1">
+        {type}
+      </span>
+    ));
+  };
 
-  const getRiskColor = (risk) => {
-    switch (risk) {
-      case 'Low': return 'text-green-600 bg-green-50';
-      case 'Moderate': return 'text-yellow-600 bg-yellow-50';
-      case 'High': return 'text-orange-600 bg-orange-50';
-      case 'Very High': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+  const getMinAmountDisplay = (fund) => {
+    const amounts = [];
+    if (fund.minSip) amounts.push(`SIP: ₹${fund.minSip}`);
+    if (fund.minLumpsum) amounts.push(`Lumpsum: ₹${fund.minLumpsum}`);
+    return amounts.length > 0 ? amounts.join(', ') : 'N/A';
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm(''); // Clear search term
+    setFilters({
+      search: '',
+      category: '',
+      amc: '',
+      investmentType: '',
+      minAmount: '',
+      maxAmount: '',
+      isin: '',
+      sortBy: 'fundName',
+      sortOrder: 'asc'
+    });
+  };
+
+  // Toggle filter visibility
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+    // Close advanced filters if main filters are hidden
+    if (!showFilters === false) {
+      setShowAdvancedFilters(false);
     }
   };
 
@@ -541,7 +586,11 @@ const Explore = ({ onBack, investmentType }) => {
       <SIPTransaction
         clientData={HARDCODED_VALUES.clientData}
         fundData={selectedFund}
-        transactionData={extractTransactionData(selectedFund?.id, 'sip')}
+        transactionData={{
+          providerId: selectedFund?.providerId,
+          itemId: selectedFund?.id,
+          fulfillmentId: selectedFund?.fulfillments?.find(f => f.type === 'SIP')?.fulfillmentId
+        }}
         onBack={handleBackFromTransaction}
         onFolioSelection={handleFolioSelection}
       />
@@ -553,7 +602,11 @@ const Explore = ({ onBack, investmentType }) => {
       <LumpsumTransaction
         clientData={HARDCODED_VALUES.clientData}
         fundData={selectedFund}
-        transactionData={extractTransactionData(selectedFund?.id, 'purchase')}
+        transactionData={{
+          providerId: selectedFund?.providerId,
+          itemId: selectedFund?.id,
+          fulfillmentId: selectedFund?.fulfillments?.find(f => f.type === 'LUMPSUM')?.fulfillmentId
+        }}
         onBack={handleBackFromTransaction}
         onFolioSelection={handleFolioSelection}
       />
@@ -615,7 +668,7 @@ const Explore = ({ onBack, investmentType }) => {
       )}
 
       {/* Header */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 lg:mb-6 relative">
         <div className="absolute -top-3 left-4 sm:left-8 bg-white px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Explore Mutual Funds
         </div>
@@ -632,18 +685,29 @@ const Explore = ({ onBack, investmentType }) => {
             </div>
           </div>
           
-          {investmentType && (
-            <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 border border-blue-200/40">
-              {investmentType === 'sip' ? (
-                <Calendar className="w-4 h-4 text-blue-600" />
-              ) : (
-                <Banknote className="w-4 h-4 text-blue-600" />
-              )}
-              <span className="text-sm font-medium text-blue-600">
-                {investmentType === 'sip' ? 'SIP Investment' : 'Lumpsum Investment'}
-              </span>
-            </div>
-          )}
+          <div className="flex flex-col space-y-3 lg:items-end">
+            {investmentType && (
+              <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 border border-blue-200/40">
+                {investmentType === 'sip' ? (
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                ) : (
+                  <Banknote className="w-4 h-4 text-blue-600" />
+                )}
+                <span className="text-sm font-medium text-blue-600">
+                  {investmentType === 'sip' ? 'SIP Investment' : 'Lumpsum Investment'}
+                </span>
+              </div>
+            )}
+            
+            {/* Filter Toggle Button */}
+            <Button
+              onClick={toggleFilters}
+              className="bg-white hover:bg-blue-100 text-black border border-blue-200 px-4 py-2 rounded-full"
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -655,7 +719,7 @@ const Explore = ({ onBack, investmentType }) => {
             <div>
               <p className="text-sm font-medium text-red-800">{errors.fundSearch}</p>
               <button 
-                onClick={searchFunds}
+                onClick={fetchFunds}
                 className="text-sm text-red-600 hover:text-red-700 underline mt-1"
               >
                 Retry loading funds
@@ -665,91 +729,174 @@ const Explore = ({ onBack, investmentType }) => {
         </div>
       )}
 
-      {/* Search and Filters */}
-      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6 mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center space-y-4 lg:space-y-0 lg:space-x-6">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search funds by name, AMC..."
-              className="w-full pl-10 pr-4 py-3 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              disabled={fundSearchLoading}
-            />
-          </div>
-          
-          {/* Category Filter */}
-          <div className="relative flex space-x-2 overflow-x-auto pb-2">
-            {/* Moving background indicator */}
-            <div 
-              className={`
-                absolute top-0 bottom-2 bg-blue-600 rounded-full
-                transition-all duration-400 ease-out z-0
-                ${fundSearchLoading ? 'opacity-70' : 'opacity-100'}
-              `}
-              style={{
-                left: `${categories.findIndex(cat => cat.id === selectedCategory) * 120}px`,
-                width: '112px',
-                transform: fundSearchLoading ? 'scale(0.95)' : 'scale(1)'
-              }}
-            />
+      {/* Search and Filters - Collapsible */}
+      {showFilters && (
+        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6 mb-6">
+          <div className="flex flex-col space-y-4">
+            {/* Search Bar */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search funds by name, AMC, ISIN..."
+                className="w-full pl-10 pr-4 py-3 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                disabled={fundSearchLoading}
+              />
+            </div>
             
-            {categories.map((category, index) => {
-              const isActive = selectedCategory === category.id;
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => setSelectedCategory(category.id)}
+            {/* Quick Filters Row */}
+            <div className="flex flex-wrap gap-4">
+              {/* Category Filter */}
+              <select
+                value={filters.category}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
+                className="px-4 py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                disabled={fundSearchLoading}
+              >
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* AMC Filter */}
+              {amcs.length > 0 && (
+                <select
+                  value={filters.amc}
+                  onChange={(e) => handleFilterChange('amc', e.target.value)}
+                  className="px-4 py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
                   disabled={fundSearchLoading}
-                  className={`
-                    relative z-10 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border
-                    ${isActive
-                      ? 'text-white border-blue-600'
-                      : 'bg-white/70 text-gray-700 hover:bg-blue-50 border-blue-200/40 hover:border-blue-400'
-                    }
-                    ${fundSearchLoading ? 'opacity-50 cursor-not-allowed' : ''}
-                  `}
-                  style={{ minWidth: '112px' }}
                 >
-                  {category.name} ({filteredFunds.length})
-                </button>
-              );
-            })}
+                  {amcs.map(amc => (
+                    <option key={amc.id} value={amc.value || amc.id}>
+                      {amc.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Investment Type Filter */}
+              <select
+                value={filters.investmentType}
+                onChange={(e) => handleFilterChange('investmentType', e.target.value)}
+                className="px-4 py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                disabled={fundSearchLoading}
+              >
+                {investmentTypes.map(type => (
+                  <option key={type.id} value={type.id}>
+                    {type.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Advanced Filters Toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className="bg-white/50 hover:bg-white/70 border border-blue-200/40"
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Advanced Filters
+              </Button>
+
+              {/* Clear Filters */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="bg-white/50 hover:bg-white/70 border border-blue-200/40"
+              >
+                Clear All
+              </Button>
+            </div>
+
+            {/* Advanced Filters */}
+            {showAdvancedFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount</label>
+                  <input
+                    type="number"
+                    placeholder="Min amount"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={filters.minAmount}
+                    onChange={(e) => handleFilterChange('minAmount', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount</label>
+                  <input
+                    type="number"
+                    placeholder="Max amount"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={filters.maxAmount}
+                    onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                  <select
+                    value={filters.sortBy}
+                    onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {sortOptions.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                  <select
+                    value={filters.sortOrder}
+                    onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Results Count and Pagination Info - Only show when filters are visible */}
+      {showFilters && !fundSearchLoading && funds.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
+          <div className="flex items-center space-x-4">
+            <p className="text-sm text-gray-600">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalFunds)} of {pagination.totalFunds} funds
+            </p>
+            <select
+              value={pagination.limit}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Loading State - Show Skeleton */}
       {fundSearchLoading && <FundTableSkeleton />}
 
-      {/* Results Count */}
-      {!fundSearchLoading && funds.length > 0 && (
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-sm text-gray-600">
-            Showing {filteredFunds.length} of {funds.length} funds
-          </p>
-          <Button variant="outline" size="sm" className="hidden sm:flex bg-white/50 hover:bg-white/70 border border-blue-200/40">
-            <Filter className="w-4 h-4 mr-2" />
-            More Filters
-          </Button>
-        </div>
-      )}
-
       {/* Funds Table */}
-      {!fundSearchLoading && filteredFunds.length > 0 && (
-        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-          <div className="p-4 lg:p-6 border-b border-blue-100/40">
+      {!fundSearchLoading && funds.length > 0 && (
+        <div className="backdrop-blur-sm overflow-hidden">
+          <div className="p-4 lg:p-6 border-b border-blue-400/50" style={{ borderBottomWidth: '1px' }}>
             <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Available Mutual Funds</h3>
-              <div className="flex items-center space-x-2">
-                <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 border border-blue-200/40">
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filter
-                </Button>
-              </div>
             </div>
           </div>
           
@@ -757,26 +904,26 @@ const Explore = ({ onBack, investmentType }) => {
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200">
+                <tr className="border-b border-blue-200/50" style={{ borderBottomWidth: '1px' }}>
                   <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-64">Fund Details</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Category</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Returns (1Y/3Y/5Y)</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Risk</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Investment Types</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Min Amount</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Status</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredFunds.map((fund, index) => (
-                  <tr key={fund.id} className="border-b border-gray-100 hover:bg-white/50 transition-colors">
+                {funds.map((fund, index) => (
+                  <tr key={fund.id} className="border-b border-blue-300/50 hover:bg-white/50 transition-colors" style={{ borderBottomWidth: '1px' }}>
                     <td className="p-4 text-sm">
                       <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleFundClick(fund)}>
                         <FundIcon fund={fund} />
                         <div className="flex-1">
                           <p className="font-medium text-gray-900 mb-1 hover:text-blue-600">{fund.name}</p>
                           <p className="text-gray-500 text-xs">by {fund.creator}</p>
-                          {fund.plans && (
-                            <p className="text-gray-400 text-xs mt-1">{fund.plans.length} plans available</p>
+                          {fund.isin && (
+                            <p className="text-gray-400 text-xs mt-1">ISIN: {fund.isin}</p>
                           )}
                         </div>
                       </div>
@@ -787,18 +934,14 @@ const Explore = ({ onBack, investmentType }) => {
                       </span>
                     </td>
                     <td className="p-4 text-sm">
-                      <div className="space-y-1">
-                        <div className="flex space-x-4 text-xs">
-                          <span className="text-green-600 font-medium">{fund.returns['1y']}</span>
-                          <span className="text-green-600 font-medium">{fund.returns['3y']}</span>
-                          <span className="text-green-600 font-medium">{fund.returns['5y']}</span>
-                        </div>
+                      <div className="flex flex-wrap gap-1">
+                        {getInvestmentTypeBadges(fund.investmentTypes)}
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRiskColor(fund.risk)}`}>
-                        {fund.risk}
-                      </span>
+                      <div className="text-xs text-gray-600">
+                        {getMinAmountDisplay(fund)}
+                      </div>
                     </td>
                     <td className="p-4 text-sm">
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -852,9 +995,9 @@ const Explore = ({ onBack, investmentType }) => {
           </div>
 
           {/* Mobile Cards */}
-          <div className="lg:hidden divide-y divide-gray-100">
-            {filteredFunds.map((fund, index) => (
-              <div key={fund.id} className="p-4 hover:bg-white/50 transition-colors" onClick={() => handleFundClick(fund)}>
+          <div className="lg:hidden" style={{ borderTop: '1px solid rgb(96 165 250 / 0.5)' }}>
+            {funds.map((fund, index) => (
+              <div key={fund.id} className="p-4 hover:bg-white/50 transition-colors border-b border-blue-400/50" style={{ borderBottomWidth: '1px' }} onClick={() => handleFundClick(fund)}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     <FundIcon fund={fund} />
@@ -876,17 +1019,15 @@ const Explore = ({ onBack, investmentType }) => {
                     </span>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs">Risk Level</p>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRiskColor(fund.risk)}`}>
-                      {fund.risk}
-                    </span>
+                    <p className="text-gray-500 text-xs">Investment Types</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {getInvestmentTypeBadges(fund.investmentTypes)}
+                    </div>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs">Returns (1Y/3Y/5Y)</p>
-                    <div className="flex space-x-2 text-xs">
-                      <span className="text-green-600 font-medium">{fund.returns['1y']}</span>
-                      <span className="text-green-600 font-medium">{fund.returns['3y']}</span>
-                      <span className="text-green-600 font-medium">{fund.returns['5y']}</span>
+                    <p className="text-gray-500 text-xs">Min Amount</p>
+                    <div className="text-xs text-gray-600">
+                      {getMinAmountDisplay(fund)}
                     </div>
                   </div>
                   <div>
@@ -927,41 +1068,91 @@ const Explore = ({ onBack, investmentType }) => {
         </div>
       )}
 
-      {/* Load More */}
-      {!fundSearchLoading && filteredFunds.length > 0 && (
-        <div className="text-center mt-8">
-          <Button variant="outline" className="bg-white/60 hover:bg-white/80 border-blue-200/40">
-            Load More Funds
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
+      {/* Pagination */}
+      {!fundSearchLoading && funds.length > 0 && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(1)}
+              disabled={pagination.page === 1}
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page - 1)}
+              disabled={!pagination.hasPrev}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              let pageNum;
+              if (pagination.totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (pagination.page <= 3) {
+                pageNum = i + 1;
+              } else if (pagination.page >= pagination.totalPages - 2) {
+                pageNum = pagination.totalPages - 4 + i;
+              } else {
+                pageNum = pagination.page - 2 + i;
+              }
+
+              return (
+                <Button
+                  key={pageNum}
+                  variant={pagination.page === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(pageNum)}
+                  className={pagination.page === pageNum ? "bg-blue-600 text-white" : ""}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.page + 1)}
+              disabled={!pagination.hasNext}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(pagination.totalPages)}
+              disabled={pagination.page === pagination.totalPages}
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       )}
 
       {/* No Results */}
-      {!fundSearchLoading && filteredFunds.length === 0 && funds.length > 0 && (
+      {!fundSearchLoading && funds.length === 0 && (
         <div className="text-center py-12">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No funds found</h3>
           <p className="text-gray-600">Try adjusting your search or filter criteria</p>
-        </div>
-      )}
-
-      {/* No Funds Available */}
-      {!fundSearchLoading && funds.length === 0 && !errors.fundSearch && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No funds available</h3>
-          <p className="text-gray-600">Please try again later or contact support</p>
           <Button 
-            onClick={searchFunds}
+            onClick={clearFilters}
             className="mt-4"
             variant="outline"
           >
-            Retry Loading Funds
+            Clear All Filters
           </Button>
         </div>
       )}

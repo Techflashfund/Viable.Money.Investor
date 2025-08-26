@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Circle, X, ChevronDown, Check, AlertCircle } from 'lucide-react';
+import { Circle, X, ChevronDown, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import useAuthStore from '@/store/auth';
 import createApiService from '@/services/api';
 
@@ -563,13 +563,8 @@ const AuthPage = () => {
         // Save auth data to store
         setAuth(response.data, response.token, response.onboardingStatus);
         
-        handleSuccess(response.message || 'Account created successfully');
-        setCurrentStep(4);
-        
-        // Navigate to dashboard after short delay
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
+        // Navigate directly to dashboard
+        router.push('/');
         
       } else {
         // Login verification
@@ -578,13 +573,8 @@ const AuthPage = () => {
         // Save auth data to store
         setAuth(response.data, response.token, response.onboardingStatus);
         
-        handleSuccess(response.message || 'Login successful');
-        setCurrentStep(4);
-        
-        // Navigate to dashboard after short delay
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
+        // Navigate directly to dashboard
+        router.push('/');
       }
     } catch (error) {
       handleError(error);
@@ -592,10 +582,6 @@ const AuthPage = () => {
       setLoading(false);
       setAuthLoading(false);
     }
-  };
-
-  const handleGoToDashboard = () => {
-    router.push('/');
   };
 
   const getStepCount = () => {
@@ -608,7 +594,6 @@ const AuthPage = () => {
         case 1: return 'Create Your Account';
         case 2: return 'Verify Your Email';
         case 3: return 'Secure Your Account';
-        case 4: return 'Welcome to Investing!';
         default: return '';
       }
     } else {
@@ -616,7 +601,6 @@ const AuthPage = () => {
         case 1: return 'Welcome Back';
         case 2: return 'Verify Your Identity';
         case 3: return 'Enter Your PIN';
-        case 4: return 'Access Your Portfolio';
         default: return '';
       }
     }
@@ -628,7 +612,6 @@ const AuthPage = () => {
         case 1: return 'Join thousands of investors building wealth through mutual funds';
         case 2: return `Enter the OTP sent to ${formData.email}`;
         case 3: return 'Set a 4-digit PIN for secure account access';
-        case 4: return 'Your investment account is ready to use';
         default: return '';
       }
     } else {
@@ -636,7 +619,6 @@ const AuthPage = () => {
         case 1: return 'Sign in to access your investment portfolio';
         case 2: return `Enter the OTP sent to your registered email`;
         case 3: return 'Enter your 4-digit security PIN';
-        case 4: return 'Welcome back to your investment dashboard';
         default: return '';
       }
     }
@@ -1064,9 +1046,7 @@ const AuthPage = () => {
                           size="sm"
                           className="p-2 rounded-xl border-gray-300 hover:border-blue-400 font-sans"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
+                          <RefreshCw className="w-4 h-4" />
                         </Button>
                       </div>
                       <div className="relative">
@@ -1301,75 +1281,6 @@ const AuthPage = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              )}
-
-              {currentStep === 4 && (
-                <div className="text-center space-y-4 lg:space-y-6">
-                  <div className="w-12 lg:w-16 h-12 lg:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-6 lg:w-8 h-6 lg:h-8 text-green-600" />
-                  </div>
-                  
-                  <h2 className="text-xl lg:text-2xl font-bold text-black font-sans">
-                    {mode === 'signup' ? 'Account Created Successfully!' : 'Welcome Back!'}
-                  </h2>
-                  <p className="text-gray-600 font-sans text-sm lg:text-base">
-                    {mode === 'signup' 
-                      ? 'Congratulations! Your investment account has been created successfully. Redirecting you to the dashboard...'
-                      : 'Welcome back to your investment dashboard! Redirecting you to your portfolio...'
-                    }
-                  </p>
-                  
-                  <div className="rounded-2xl bg-green-50/90 border border-green-200 p-4">
-                    <div className="flex items-start space-x-3">
-                      <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm text-green-800 font-sans">
-                          <strong>Success!</strong><br />
-                          {mode === 'signup' 
-                            ? 'You can now start exploring mutual funds and building your portfolio.'
-                            : 'Access your portfolio, discover new funds, and track your investment performance.'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {user && (
-                    <div className="text-left bg-gray-50 rounded-2xl p-4 space-y-2">
-                      <h3 className="font-semibold text-black">Account Details:</h3>
-                      <p className="text-sm text-gray-600">Username: {user.username}</p>
-                      <p className="text-sm text-gray-600">Email: {user.email}</p>
-                      {user.phone && <p className="text-sm text-gray-600">Phone: {user.phone}</p>}
-                      <p className="text-sm text-gray-600">Status: <span className="text-green-600">Active</span></p>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <Button
-                      onClick={handleGoToDashboard}
-                      className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
-                      size="lg"
-                    >
-                      Go to Dashboard
-                    </Button>
-                    <div className="flex flex-col lg:flex-row space-y-3 lg:space-y-0 lg:space-x-3">
-                      <Button
-                        onClick={() => switchMode(mode === 'signup' ? 'login' : 'signup')}
-                        variant="outline"
-                        className="flex-1 rounded-2xl border-blue-600 text-blue-600 hover:bg-blue-50 py-3 px-4 lg:px-6 text-sm font-medium font-sans"
-                      >
-                        {mode === 'signup' ? 'Already have account?' : 'Create New Account'}
-                      </Button>
-                      <Button
-                        onClick={handleLogout}
-                        variant="outline"
-                        className="flex-1 rounded-2xl border-gray-400 text-gray-600 hover:bg-gray-50 py-3 px-4 lg:px-6 text-sm font-medium font-sans"
-                      >
-                        Logout
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
