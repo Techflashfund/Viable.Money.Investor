@@ -9,15 +9,16 @@ const useAuthStore = create(
       token: null,
       isAuthenticated: false,
       onboardingstatus: null,
+      transactionId: null,
       isLoading: false,
 
       // Set user data and token
-      setAuth: (userData, token,onboardingstatus) => {
+      setAuth: (userData, token, onboardingstatus = null) => {
         set({
           user: userData,
           token: token,
           isAuthenticated: true,
-          onboardingstatus:onboardingstatus,
+          onboardingstatus: onboardingstatus,
           isLoading: false
         });
       },
@@ -29,6 +30,7 @@ const useAuthStore = create(
           token: null,
           isAuthenticated: false,
           onboardingstatus: null,
+          transactionId: null,
           isLoading: false
         });
       },
@@ -43,6 +45,16 @@ const useAuthStore = create(
         set((state) => ({
           user: { ...state.user, ...userData }
         }));
+      },
+
+      // Update onboarding status
+      updateOnboardingStatus: (status) => {
+        set({ onboardingstatus: status });
+      },
+
+      // Update transaction ID
+      updateTransactionId: (transactionId) => {
+        set({ transactionId: transactionId });
       },
 
       // Get auth headers for API calls
@@ -67,7 +79,7 @@ const useAuthStore = create(
       },
 
       // Initialize auth state (check token validity on app start)
-      initAuth: () => {
+      initAuth: async () => {
         const { isTokenValid, clearAuth } = get();
         if (!isTokenValid()) {
           clearAuth();
@@ -79,7 +91,9 @@ const useAuthStore = create(
       partialize: (state) => ({ 
         user: state.user, 
         token: state.token, 
-        isAuthenticated: state.isAuthenticated 
+        isAuthenticated: state.isAuthenticated,
+        onboardingstatus: state.onboardingstatus,
+        transactionId: state.transactionId
       })
     }
   )

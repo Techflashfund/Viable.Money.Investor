@@ -24,7 +24,9 @@ const AuthPage = () => {
     setAuth, 
     clearAuth, 
     setLoading: setAuthLoading,
-    isLoading: authLoading 
+    isLoading: authLoading,
+    updateOnboardingStatus,
+    updateTransactionId
   } = useAuthStore();
   
   // Local component state
@@ -130,6 +132,62 @@ const AuthPage = () => {
     }
     
     setValidationErrors(errors);
+  };
+
+  // Check onboarding status function
+  const checkOnboardingStatus = async (transactionId) => {
+    if (!transactionId ) {
+      console.log('No transactionId or token available for onboarding status check');
+      updateOnboardingStatus(false);
+      return false;
+    }
+
+    try {
+      const response = await fetch(
+        `https://viable-money-be.onrender.com/api/onboarding/status/${transactionId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+        }
+      );
+
+      console.log('Onboarding status response:', response);
+
+      // If 404, set onboarding status to false
+      if (response.status === 404) {
+        updateOnboardingStatus(false);
+        return false;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        const status = data.data.status;
+        
+        // Check if status is one of the completed states
+        const completedStatuses = ['signature_pending', 'completed', 'submitted'];
+        const isOnboardingComplete = completedStatuses.includes(status);
+        
+        updateOnboardingStatus(isOnboardingComplete);
+        return isOnboardingComplete;
+      } else {
+        // If response structure is unexpected, set to false
+        updateOnboardingStatus(false);
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('Error checking onboarding status:', error);
+      // On error, set onboarding status to false
+      updateOnboardingStatus(false);
+      return false;
+    }
   };
 
   // Generate captcha question
@@ -561,7 +619,11 @@ const AuthPage = () => {
         const response = await apiService.setPIN(formData.email, formData.pin, formData.confirmPin);
         
         // Save auth data to store
-        setAuth(response.data, response.token, response.onboardingStatus);
+        setAuth(response.data, response.token);
+        updateTransactionId(response.data.transactionId);
+        
+        // Check onboarding status
+        await checkOnboardingStatus(response.data.transactionId);
         
         // Navigate directly to dashboard
         router.push('/');
@@ -569,9 +631,17 @@ const AuthPage = () => {
       } else {
         // Login verification
         const response = await apiService.loginVerify(formData.identifier, formData.otp, formData.pin);
+        console.log('Login verify response:', response);
         
         // Save auth data to store
-        setAuth(response.data, response.token, response.onboardingStatus);
+        setAuth(response.data, response.token);
+        console.log('Auth data set in store:', response.data, response.token);
+        updateTransactionId(response.data.transactionId);
+
+        console.log('Saved auth data and token to store', response.data.transactionId);
+        
+        // Check onboarding status
+        await checkOnboardingStatus(response.data.transactionId);
         
         // Navigate directly to dashboard
         router.push('/');
@@ -628,10 +698,10 @@ const AuthPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 flex flex-col lg:flex-row font-sans relative overflow-hidden">
       {/* Subtle geometric background elements */}
       <div className="absolute inset-0 opacity-5">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-black rounded-full blur-3xl"></div>
-        <div className="absolute bottom-32 right-20 w-48 h-48 bg-black rounded-full blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-gray-800 rounded-full blur-2xl"></div>
-        <div className="absolute bottom-20 left-10 w-40 h-40 bg-gray-900 rounded-full blur-3xl"></div>
+        <div className="absolute top-20 left-10 w-32 h-32 bg-black blur-3xl"></div>
+        <div className="absolute bottom-32 right-20 w-48 h-48 bg-black blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-gray-800 blur-2xl"></div>
+        <div className="absolute bottom-20 left-10 w-40 h-40 bg-gray-900 blur-3xl"></div>
       </div>
       
       {/* Animated Background */}
@@ -651,13 +721,13 @@ const AuthPage = () => {
                <img 
                   src="/logo.png" 
                   alt="InvestFund Logo" 
-                  className="h-16 lg:h-22 object-contain"
+                  className="h-10 lg:h-16 object-contain"
                 />
               </div>
               
               {/* User info if logged in */}
               {isAuthenticated && user && (
-                <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-3 lg:px-4 py-2 ml-4 lg:ml-8 shadow-lg border border-gray-200">
+                <div className="bg-white/90 backdrop-blur-sm border border-blue-200/50 px-3 lg:px-4 py-2 ml-4 lg:ml-8 shadow-lg">
                   <div className="flex items-center space-x-2 lg:space-x-3">
                     <div className="text-xs lg:text-sm">
                       <p className="font-medium text-gray-800">
@@ -669,7 +739,7 @@ const AuthPage = () => {
                       onClick={handleLogout}
                       variant="outline"
                       size="sm"
-                      className="text-xs px-2 lg:px-3 py-1 rounded-xl border-gray-300 hover:border-red-400 hover:text-red-600"
+                      className="text-xs px-2 lg:px-3 py-1 border-gray-300 hover:border-red-400 hover:text-red-600"
                     >
                       Logout
                     </Button>
@@ -716,26 +786,24 @@ const AuthPage = () => {
                 <div className="lg:hidden space-y-6 pt-8">
                   <div className="space-y-4">
                     <div className="flex items-center space-x-3 text-base text-gray-600">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-blue-100 flex items-center justify-center">
                         <span className="text-blue-600 font-semibold text-sm">1</span>
                       </div>
                       <span>Choose from 1000+ mutual funds</span>
                     </div>
                     <div className="flex items-center space-x-3 text-base text-gray-600">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-blue-100 flex items-center justify-center">
                         <span className="text-blue-600 font-semibold text-sm">2</span>
                       </div>
                       <span>Start investing with just ₹100</span>
                     </div>
                     <div className="flex items-center space-x-3 text-base text-gray-600">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-blue-100 flex items-center justify-center">
                         <span className="text-blue-600 font-semibold text-sm">3</span>
                       </div>
                       <span>Track portfolio performance 24/7</span>
                     </div>
                   </div>
-
-                  
                 </div>
               </div>
 
@@ -743,7 +811,7 @@ const AuthPage = () => {
               <div className="lg:hidden flex justify-end pt-4">
                 <Button
                   onClick={() => setShowMobileForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 py-5 shadow-2xl animate-bounce flex items-center space-x-3"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-5 shadow-2xl animate-bounce flex items-center space-x-3"
                   size="lg"
                 >
                   <span className="text-base font-medium">Get Started</span>
@@ -766,19 +834,19 @@ const AuthPage = () => {
                   onClick={() => setShowMobileForm(false)}
                   variant="outline"
                   size="sm"
-                  className="rounded-full p-2"
+                  className="p-2"
                 >
                   <X className="w-4 h-4" />
                 </Button>
               </div>
             )}
 
-            <div className="p-6 lg:p-8 space-y-6 lg:space-y-8 bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200">
+            <div className="p-6 lg:p-8 space-y-6 lg:space-y-8 bg-white/90 backdrop-blur-sm border border-blue-200/50 shadow-2xl">
               {/* Mode Toggle */}
-              <div className="flex bg-gray-100 rounded-2xl p-1 mb-6 lg:mb-8">
+              <div className="flex bg-gray-100 p-1 mb-6 lg:mb-8">
                 <button
                   onClick={() => switchMode('login')}
-                  className={`flex-1 py-2 lg:py-3 px-3 lg:px-4 rounded-xl text-sm font-medium font-sans transition-all ${
+                  className={`flex-1 py-2 lg:py-3 px-3 lg:px-4 text-sm font-medium font-sans transition-all ${
                     mode === 'login'
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-800'
@@ -788,7 +856,7 @@ const AuthPage = () => {
                 </button>
                 <button
                   onClick={() => switchMode('signup')}
-                  className={`flex-1 py-2 lg:py-3 px-3 lg:px-4 rounded-xl text-sm font-medium font-sans transition-all ${
+                  className={`flex-1 py-2 lg:py-3 px-3 lg:px-4 text-sm font-medium font-sans transition-all ${
                     mode === 'signup'
                       ? 'bg-white text-blue-600 shadow-sm'
                       : 'text-gray-600 hover:text-gray-800'
@@ -802,7 +870,7 @@ const AuthPage = () => {
               <div className="flex items-center justify-center mb-6 lg:mb-8">
                 {Array.from({ length: getStepCount() }, (_, i) => i + 1).map((step) => (
                   <React.Fragment key={step}>
-                    <div className={`w-6 lg:w-8 h-6 lg:h-8 rounded-full flex items-center justify-center text-xs lg:text-sm font-medium font-sans ${
+                    <div className={`w-6 lg:w-8 h-6 lg:h-8 flex items-center justify-center text-xs lg:text-sm font-medium font-sans ${
                       currentStep >= step 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-gray-200 text-gray-500'
@@ -820,7 +888,7 @@ const AuthPage = () => {
 
               {/* Enhanced Error/Success Messages */}
               {error && (
-                <div className="rounded-2xl bg-red-50/90 backdrop-blur-sm border border-red-200 p-4 relative animate-in slide-in-from-top-2 duration-300">
+                <div className="bg-red-50/90 backdrop-blur-sm border border-red-200 p-4 relative animate-in slide-in-from-top-2 duration-300">
                   <div className="flex items-start space-x-3">
                     <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
@@ -837,7 +905,7 @@ const AuthPage = () => {
               )}
 
               {success && (
-                <div className="rounded-2xl bg-green-50/90 backdrop-blur-sm border border-green-200 p-4 relative animate-in slide-in-from-top-2 duration-300">
+                <div className="bg-green-50/90 backdrop-blur-sm border border-green-200 p-4 relative animate-in slide-in-from-top-2 duration-300">
                   <div className="flex items-start space-x-3">
                     <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
@@ -873,14 +941,14 @@ const AuthPage = () => {
                             value={formData.username}
                             onChange={(e) => handleInputChange('username', e.target.value)}
                             placeholder="johndoe123"
-                            className={`rounded-2xl bg-white focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10 ${
+                            className={`bg-white focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10 ${
                               usernameAvailable === true ? 'border-green-400' : 
                               usernameAvailable === false ? 'border-red-400' : 'border-gray-300'
                             }`}
                           />
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                             {checkingUsername ? (
-                              <div className="w-4 lg:w-5 h-4 lg:h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                              <div className="w-4 lg:w-5 h-4 lg:h-5 border-2 border-blue-600 border-t-transparent animate-spin"></div>
                             ) : usernameAvailable === true ? (
                               <Check className="w-4 lg:w-5 h-4 lg:h-5 text-green-600" />
                             ) : usernameAvailable === false ? (
@@ -889,7 +957,7 @@ const AuthPage = () => {
                           </div>
                         </div>
                         {validationErrors.username && (
-                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                          <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <AlertCircle className="w-4 h-4 text-red-600" />
                               <p className="text-xs text-red-600 font-sans">{validationErrors.username}</p>
@@ -903,7 +971,7 @@ const AuthPage = () => {
                           </div>
                         )}
                         {usernameAvailable === false && (
-                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                          <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <AlertCircle className="w-4 h-4 text-red-600" />
                               <p className="text-xs text-red-600 font-sans">Username is already taken</p>
@@ -911,7 +979,7 @@ const AuthPage = () => {
                           </div>
                         )}
                         {usernameAvailable === true && (
-                          <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center space-x-2">
+                          <div className="bg-green-50 border border-green-200 p-3 flex items-center space-x-2">
                             <Check className="w-4 h-4 text-green-600" />
                             <p className="text-xs text-green-600 font-sans">Username is available</p>
                           </div>
@@ -929,7 +997,7 @@ const AuthPage = () => {
                             value={formData.phone}
                             onChange={(e) => handleInputChange('phone', e.target.value)}
                             placeholder="9876543210"
-                            className="rounded-2xl bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10"
+                            className="bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10"
                           />
                           {formData.phone && !validationErrors.phone && /^[6-9]\d{9}$/.test(formData.phone) && (
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -938,7 +1006,7 @@ const AuthPage = () => {
                           )}
                         </div>
                         {validationErrors.phone && (
-                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                          <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <AlertCircle className="w-4 h-4 text-red-600" />
                               <p className="text-xs text-red-600 font-sans">{validationErrors.phone}</p>
@@ -965,7 +1033,7 @@ const AuthPage = () => {
                             value={formData.email}
                             onChange={(e) => handleInputChange('email', e.target.value)}
                             placeholder="your@email.com"
-                            className="rounded-2xl bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10"
+                            className="bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10"
                           />
                           {formData.email && !validationErrors.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -974,7 +1042,7 @@ const AuthPage = () => {
                           )}
                         </div>
                         {validationErrors.email && (
-                          <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                          <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <AlertCircle className="w-4 h-4 text-red-600" />
                               <p className="text-xs text-red-600 font-sans">{validationErrors.email}</p>
@@ -1003,7 +1071,7 @@ const AuthPage = () => {
                           value={formData.identifier}
                           onChange={(e) => handleInputChange('identifier', e.target.value)}
                           placeholder="johndoe123 or your@email.com or 9876543210"
-                          className="rounded-2xl bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10"
+                          className="bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 py-4 lg:py-6 text-base lg:text-lg font-sans pr-10"
                         />
                         {formData.identifier && formData.identifier.trim().length > 0 && (
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -1012,7 +1080,7 @@ const AuthPage = () => {
                         )}
                       </div>
                       {validationErrors.identifier && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                        <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <AlertCircle className="w-4 h-4 text-red-600" />
                             <p className="text-xs text-red-600 font-sans">{validationErrors.identifier}</p>
@@ -1030,13 +1098,13 @@ const AuthPage = () => {
                   )}
 
                   {/* Enhanced Captcha Verification */}
-                  <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-200">
+                  <div className="space-y-3 p-4 bg-gray-50 border border-gray-200">
                     <Label className="text-sm font-medium text-black font-sans">
                       Security Verification
                     </Label>
                     <div className="flex flex-col space-y-3">
                       <div className="flex items-center space-x-3">
-                        <div className="bg-white px-3 lg:px-4 py-2 lg:py-3 rounded-xl border-2 border-dashed border-gray-300 font-mono text-base lg:text-lg font-bold text-black min-w-20 lg:min-w-24 text-center">
+                        <div className="bg-white px-3 lg:px-4 py-2 lg:py-3 border-2 border-dashed border-gray-300 font-mono text-base lg:text-lg font-bold text-black min-w-20 lg:min-w-24 text-center">
                           {captchaQuestion.question} = ?
                         </div>
                         <Button
@@ -1044,7 +1112,7 @@ const AuthPage = () => {
                           onClick={refreshCaptcha}
                           variant="outline"
                           size="sm"
-                          className="p-2 rounded-xl border-gray-300 hover:border-blue-400 font-sans"
+                          className="p-2 border-gray-300 hover:border-blue-400 font-sans"
                         >
                           <RefreshCw className="w-4 h-4" />
                         </Button>
@@ -1055,7 +1123,7 @@ const AuthPage = () => {
                           value={formData.captcha}
                           onChange={(e) => handleInputChange('captcha', e.target.value)}
                           placeholder="Enter answer"
-                          className={`rounded-xl py-3 text-center font-sans bg-white pr-10 ${
+                          className={`py-3 text-center font-sans bg-white pr-10 ${
                             formData.captcha 
                               ? captchaVerified 
                                 ? 'border-green-400 bg-green-50 text-green-700' 
@@ -1075,13 +1143,13 @@ const AuthPage = () => {
                       </div>
                     </div>
                     {formData.captcha && !captchaVerified && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center space-x-2">
+                      <div className="bg-red-50 border border-red-200 p-3 flex items-center space-x-2">
                         <AlertCircle className="w-4 h-4 text-red-600" />
                         <p className="text-xs text-red-600 font-sans">Incorrect answer. Please try again.</p>
                       </div>
                     )}
                     {captchaVerified && (
-                      <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center space-x-2">
+                      <div className="bg-green-50 border border-green-200 p-3 flex items-center space-x-2">
                         <Check className="w-4 h-4 text-green-600" />
                         <p className="text-xs text-green-600 font-sans">Verification successful</p>
                       </div>
@@ -1095,7 +1163,7 @@ const AuthPage = () => {
                         ? (!formData.username || !formData.phone || !formData.email || !captchaVerified || usernameAvailable === false || loading)
                         : (!formData.identifier?.trim() || !captchaVerified || loading)
                     }
-                    className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
                     size="lg"
                   >
                     {loading ? 'Sending OTP...' : 'Send OTP'}
@@ -1122,7 +1190,7 @@ const AuthPage = () => {
                         onChange={(e) => handleInputChange('otp', e.target.value)}
                         placeholder="123456"
                         maxLength="6"
-                        className="rounded-2xl bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 text-center text-xl lg:text-2xl tracking-widest py-4 lg:py-6 font-sans pr-10"
+                        className="bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 text-center text-xl lg:text-2xl tracking-widest py-4 lg:py-6 font-sans pr-10"
                       />
                       {formData.otp && formData.otp.length === 6 && (
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -1135,7 +1203,7 @@ const AuthPage = () => {
                   <Button
                     onClick={mode === 'signup' ? handleVerifyOTP : () => setCurrentStep(3)}
                     disabled={formData.otp.length !== 6 || loading}
-                    className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
                     size="lg"
                   >
                     {loading ? 'Verifying...' : 'Verify OTP'}
@@ -1146,7 +1214,7 @@ const AuthPage = () => {
                       onClick={mode === 'signup' ? handleResendOTP : handleResendLoginOTP}
                       disabled={loading}
                       variant="outline"
-                      className="flex-1 rounded-2xl border-blue-600 text-blue-600 hover:bg-blue-50 py-4 lg:py-6 text-base font-medium font-sans"
+                      className="flex-1 border-blue-600 text-blue-600 hover:bg-blue-50 py-4 lg:py-6 text-base font-medium font-sans"
                       size="lg"
                     >
                       {loading ? 'Sending...' : 'Resend OTP'}
@@ -1162,7 +1230,7 @@ const AuthPage = () => {
                         setSuccess('');
                       }}
                       variant="outline"
-                      className="flex-1 rounded-2xl border-gray-400 text-gray-600 hover:bg-gray-50 py-4 lg:py-6 text-base font-medium font-sans"
+                      className="flex-1 border-gray-400 text-gray-600 hover:bg-gray-50 py-4 lg:py-6 text-base font-medium font-sans"
                       size="lg"
                     >
                       Back
@@ -1190,7 +1258,7 @@ const AuthPage = () => {
                         onChange={(e) => handleInputChange('pin', e.target.value)}
                         placeholder="••••"
                         maxLength="4"
-                        className="rounded-2xl bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 text-center text-xl lg:text-2xl tracking-widest py-4 lg:py-6 font-sans pr-10"
+                        className="bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 text-center text-xl lg:text-2xl tracking-widest py-4 lg:py-6 font-sans pr-10"
                       />
                       {formData.pin && formData.pin.length === 4 && !validationErrors.pin && (
                         <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -1199,7 +1267,7 @@ const AuthPage = () => {
                       )}
                     </div>
                     {validationErrors.pin && (
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                      <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                         <div className="flex items-center space-x-2">
                           <AlertCircle className="w-4 h-4 text-red-600" />
                           <p className="text-xs text-red-600 font-sans">{validationErrors.pin}</p>
@@ -1227,7 +1295,7 @@ const AuthPage = () => {
                           onChange={(e) => handleInputChange('confirmPin', e.target.value)}
                           placeholder="••••"
                           maxLength="4"
-                          className="rounded-2xl bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 text-center text-xl lg:text-2xl tracking-widest py-4 lg:py-6 font-sans pr-10"
+                          className="bg-white border-gray-300 focus:border-blue-600 focus:ring-blue-500 text-center text-xl lg:text-2xl tracking-widest py-4 lg:py-6 font-sans pr-10"
                         />
                         {formData.confirmPin && formData.confirmPin.length === 4 && formData.pin === formData.confirmPin && (
                           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -1236,7 +1304,7 @@ const AuthPage = () => {
                         )}
                       </div>
                       {validationErrors.confirmPin && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center justify-between">
+                        <div className="bg-red-50 border border-red-200 p-3 flex items-center justify-between">
                           <div className="flex items-center space-x-2">
                             <AlertCircle className="w-4 h-4 text-red-600" />
                             <p className="text-xs text-red-600 font-sans">{validationErrors.confirmPin}</p>
@@ -1259,7 +1327,7 @@ const AuthPage = () => {
                         ? (formData.pin.length !== 4 || formData.confirmPin.length !== 4 || loading)
                         : (formData.pin.length !== 4 || loading)
                     }
-                    className="w-full rounded-2xl bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 lg:py-6 text-base font-medium font-sans transition-all transform hover:scale-105"
                     size="lg"
                   >
                     {loading 
@@ -1269,7 +1337,7 @@ const AuthPage = () => {
                   </Button>
 
                   {mode === 'signup' && (
-                    <div className="rounded-2xl bg-blue-50/90 border border-blue-200 p-4">
+                    <div className="bg-blue-50/90 border border-blue-200 p-4">
                       <div className="flex items-start space-x-3">
                         <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                         <div>

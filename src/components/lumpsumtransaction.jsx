@@ -682,7 +682,7 @@ const LumpsumTransaction = ({
 
     try {
       const transactionId = paymentResponse?.data?.transactionId || lumpsumResponse?.transactionId;
-      const response = await fetch(`https://preprod.wyable.in/api/ondc/payment/status/${transactionId}`, {
+      const response = await fetch(`https://investment.flashfund.in/api/ondc/payment/status/${transactionId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
