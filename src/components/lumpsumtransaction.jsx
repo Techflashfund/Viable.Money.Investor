@@ -284,7 +284,7 @@ const PaymentInitiationComponent = ({
 }) => {
   // Filter out payment methods with null auth
   const filteredPaymentMethods = paymentMethodsData?.paymentMethods?.filter(paymentMethod => 
-    paymentMethod.methods?.[0]?.auth !== null && paymentMethod.methods?.[0]?.auth !== undefined
+    paymentMethod.methods?.[0]?.auth !== "cc" && paymentMethod.methods?.[0]?.auth !== "ccc"
   ) || [];
 
   return (
@@ -725,7 +725,7 @@ const LumpsumTransaction = ({
           pan: panNumber // Use fetched PAN
         }
       };
-
+       console.log('Lumpsum Request Body:', requestBody);
       const response = await fetch('https://viable-money-be.onrender.com/api/transaction/select', {
         method: 'POST',
         headers: {
@@ -733,6 +733,7 @@ const LumpsumTransaction = ({
         },
         body: JSON.stringify(requestBody)
       });
+      console.log('Lumpsum Response Status:', response);
 
       const data = await response.json();
 
@@ -953,7 +954,7 @@ const LumpsumTransaction = ({
         paymentIp: "117.200.73.102",
         paymentMethod: {
           mode: selectedPaymentMethod.methods[0].mode || "UPI_AUTOPAY",
-          auth: selectedPaymentMethod.methods[0].auth || "URI"
+          auth: selectedPaymentMethod.methods[0].auth 
         }
       };
 
