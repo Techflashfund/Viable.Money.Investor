@@ -506,9 +506,9 @@ const FundDetails = ({ fund, onBack, onInvest }) => {
         {/* Left Column - Key Metrics */}
         <div className="lg:col-span-1 space-y-4">
           {/* NAV Card */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 p-6 shadow-sm rounded-lg">
+          <div className=" border-blue-600 bg-white p-6 shadow-sm rounded-lg">
             <div className="flex items-center space-x-2 mb-3">
-              <IndianRupee className="w-5 h-5 text-blue-600" />
+              
               <span className="text-sm font-medium text-blue-700">Current NAV</span>
             </div>
             <div className="text-3xl font-bold text-blue-600 mb-2">

@@ -905,7 +905,7 @@ const SIPTransaction = ({
       // Step 1: Submit folio form
       const folioFormBody = {
         formUrl: sipResponse.newFolio.formUrl,
-        userTransactionId: "123456789", // Hardcoded as requested
+        userTransactionId: userTransactionId, // Hardcoded as requested
         transactionId: transactionId
       };
 
