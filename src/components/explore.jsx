@@ -37,11 +37,11 @@ import FundDetails from './funddetails';
 // Skeleton Components
 const FundTableSkeleton = () => {
   return (
-    <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm">
-      <div className="p-4 lg:p-6 border-b border-blue-100/40">
+    <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm mx-0 md:mx-0">
+      <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
         <div className="flex items-center justify-between">
-          <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
-          <div className="h-8 bg-gray-200 rounded w-20 animate-pulse"></div>
+          <div className="h-5 md:h-6 bg-gray-200 rounded w-32 md:w-48 animate-pulse"></div>
+          <div className="h-6 md:h-8 bg-gray-200 rounded w-16 md:w-20 animate-pulse"></div>
         </div>
       </div>
       
@@ -98,30 +98,30 @@ const FundTableSkeleton = () => {
       </div>
 
       {/* Mobile Skeleton */}
-      <div className="lg:hidden divide-y divide-gray-100">
+      <div className="lg:hidden">
         {[...Array(6)].map((_, index) => (
-          <div key={index} className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-3 flex-1">
-                <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+          <div key={index} className="p-3 border-b border-gray-100">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2 flex-1">
+                <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
                 <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-40 mb-2 animate-pulse"></div>
-                  <div className="h-3 bg-gray-200 rounded w-24 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-32 mb-1 animate-pulse"></div>
+                  <div className="h-2 bg-gray-200 rounded w-20 animate-pulse"></div>
                 </div>
               </div>
-              <div className="h-8 bg-gray-200 rounded w-8 animate-pulse"></div>
+              <div className="h-6 bg-gray-200 rounded w-6 animate-pulse"></div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               {[...Array(4)].map((_, i) => (
                 <div key={i}>
-                  <div className="h-3 bg-gray-200 rounded w-16 mb-1 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                  <div className="h-2 bg-gray-200 rounded w-12 mb-1 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
                 </div>
               ))}
             </div>
 
-            <div className="h-10 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="h-8 bg-gray-200 rounded-full animate-pulse"></div>
           </div>
         ))}
       </div>
@@ -531,7 +531,7 @@ const Explore = ({ onBack, investmentType }) => {
     if (!investmentTypes || investmentTypes.length === 0) return null;
     
     return investmentTypes.slice(0, 2).map(type => (
-      <span key={type} className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full mr-1">
+      <span key={type} className="inline-block px-1.5 md:px-2 py-0.5 md:py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full mr-1">
         {type}
       </span>
     ));
@@ -654,7 +654,7 @@ const Explore = ({ onBack, investmentType }) => {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
+    <div className="px-0 py-2 md:p-4 lg:p-8 overflow-x-auto">
       {/* Loading line animation */}
       {fundSearchLoading && (
         <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-gray-200">
@@ -668,32 +668,32 @@ const Explore = ({ onBack, investmentType }) => {
       )}
 
       {/* Header */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 lg:mb-6 relative">
-        <div className="absolute -top-3 left-4 sm:left-8 bg-white px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-3 md:mb-4 lg:mb-6 relative mx-2 md:mx-0">
+        <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-white px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Explore Mutual Funds
         </div>
         
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between p-4 lg:p-6 space-y-4 lg:space-y-0">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between p-3 md:p-4 lg:p-6 space-y-3 md:space-y-4 lg:space-y-0">
+          <div className="flex items-center space-x-3 md:space-x-4">
             <div>
-              <h1 className="text-lg lg:text-xl font-semibold text-gray-900">
+              <h1 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">
                 {investmentType === 'sip' ? 'Start SIP Investment' : 'Make Lumpsum Investment'}
               </h1>
-              <p className="text-sm text-gray-600">
+              <p className="text-xs md:text-sm text-gray-600">
                 Choose from our curated list of top-performing mutual funds
               </p>
             </div>
           </div>
           
-          <div className="flex flex-col space-y-3 lg:items-end">
+          <div className="flex flex-col space-y-2 md:space-y-3 lg:items-end">
             {investmentType && (
-              <div className="flex items-center space-x-2 bg-blue-50 px-4 py-2 border border-blue-200/40">
+              <div className="flex items-center space-x-2 bg-blue-50 px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40">
                 {investmentType === 'sip' ? (
-                  <Calendar className="w-4 h-4 text-blue-600" />
+                  <Calendar className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
                 ) : (
-                  <Banknote className="w-4 h-4 text-blue-600" />
+                  <Banknote className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
                 )}
-                <span className="text-sm font-medium text-blue-600">
+                <span className="text-xs md:text-sm font-medium text-blue-600">
                   {investmentType === 'sip' ? 'SIP Investment' : 'Lumpsum Investment'}
                 </span>
               </div>
@@ -702,9 +702,9 @@ const Explore = ({ onBack, investmentType }) => {
             {/* Filter Toggle Button */}
             <Button
               onClick={toggleFilters}
-              className="bg-white hover:bg-blue-100 text-black border border-blue-200 px-4 py-2 rounded-full"
+              className="bg-white hover:bg-blue-100 text-black border border-blue-200 px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm"
             >
-              <Filter className="w-4 h-4 mr-2" />
+              <Filter className="w-3 h-3 md:w-4 md:h-4 mr-1.5 md:mr-2" />
               {showFilters ? 'Hide Filters' : 'Show Filters'}
             </Button>
           </div>
@@ -713,14 +713,14 @@ const Explore = ({ onBack, investmentType }) => {
 
       {/* Error Messages */}
       {errors.fundSearch && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200">
+        <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-50 border border-red-200 mx-2 md:mx-0">
           <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
+            <AlertCircle className="h-4 w-4 md:h-5 md:w-5 text-red-400 mr-2 md:mr-3" />
             <div>
-              <p className="text-sm font-medium text-red-800">{errors.fundSearch}</p>
+              <p className="text-xs md:text-sm font-medium text-red-800">{errors.fundSearch}</p>
               <button 
                 onClick={fetchFunds}
-                className="text-sm text-red-600 hover:text-red-700 underline mt-1"
+                className="text-xs md:text-sm text-red-600 hover:text-red-700 underline mt-1"
               >
                 Retry loading funds
               </button>
@@ -731,15 +731,15 @@ const Explore = ({ onBack, investmentType }) => {
 
       {/* Search and Filters - Collapsible */}
       {showFilters && (
-        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow p-4 lg:p-6 mb-6">
-          <div className="flex flex-col space-y-4">
+        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow p-3 md:p-4 lg:p-6 mb-4 md:mb-6 mx-2 md:mx-0">
+          <div className="flex flex-col space-y-3 md:space-y-4">
             {/* Search Bar */}
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-2.5 md:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search funds by name, AMC, ISIN..."
-                className="w-full pl-10 pr-4 py-3 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2.5 md:py-3 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-sm md:text-base"
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 disabled={fundSearchLoading}
@@ -747,12 +747,12 @@ const Explore = ({ onBack, investmentType }) => {
             </div>
             
             {/* Quick Filters Row */}
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-2 md:gap-4">
               {/* Category Filter */}
               <select
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="px-4 py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                className="px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-xs md:text-sm"
                 disabled={fundSearchLoading}
               >
                 {categories.map(category => (
@@ -767,7 +767,7 @@ const Explore = ({ onBack, investmentType }) => {
                 <select
                   value={filters.amc}
                   onChange={(e) => handleFilterChange('amc', e.target.value)}
-                  className="px-4 py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                  className="px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-xs md:text-sm"
                   disabled={fundSearchLoading}
                 >
                   {amcs.map(amc => (
@@ -782,7 +782,7 @@ const Explore = ({ onBack, investmentType }) => {
               <select
                 value={filters.investmentType}
                 onChange={(e) => handleFilterChange('investmentType', e.target.value)}
-                className="px-4 py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm"
+                className="px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-xs md:text-sm"
                 disabled={fundSearchLoading}
               >
                 {investmentTypes.map(type => (
@@ -797,9 +797,9 @@ const Explore = ({ onBack, investmentType }) => {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="bg-white/50 hover:bg-white/70 border border-blue-200/40"
+                className="bg-white/50 hover:bg-white/70 border border-blue-200/40 text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5"
               >
-                <Filter className="w-4 h-4 mr-2" />
+                <Filter className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                 Advanced Filters
               </Button>
 
@@ -808,7 +808,7 @@ const Explore = ({ onBack, investmentType }) => {
                 variant="outline"
                 size="sm"
                 onClick={clearFilters}
-                className="bg-white/50 hover:bg-white/70 border border-blue-200/40"
+                className="bg-white/50 hover:bg-white/70 border border-blue-200/40 text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5"
               >
                 Clear All
               </Button>
@@ -816,33 +816,33 @@ const Explore = ({ onBack, investmentType }) => {
 
             {/* Advanced Filters */}
             {showAdvancedFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Amount</label>
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Min Amount</label>
                   <input
                     type="number"
                     placeholder="Min amount"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 md:px-3 py-1.5 md:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm"
                     value={filters.minAmount}
                     onChange={(e) => handleFilterChange('minAmount', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Amount</label>
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Max Amount</label>
                   <input
                     type="number"
                     placeholder="Max amount"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 md:px-3 py-1.5 md:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm"
                     value={filters.maxAmount}
                     onChange={(e) => handleFilterChange('maxAmount', e.target.value)}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Sort By</label>
                   <select
                     value={filters.sortBy}
                     onChange={(e) => handleFilterChange('sortBy', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 md:px-3 py-1.5 md:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm"
                   >
                     {sortOptions.map(option => (
                       <option key={option.value} value={option.value}>
@@ -852,11 +852,11 @@ const Explore = ({ onBack, investmentType }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sort Order</label>
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Sort Order</label>
                   <select
                     value={filters.sortOrder}
                     onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-2 md:px-3 py-1.5 md:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm"
                   >
                     <option value="asc">Ascending</option>
                     <option value="desc">Descending</option>
@@ -870,15 +870,15 @@ const Explore = ({ onBack, investmentType }) => {
 
       {/* Results Count and Pagination Info - Only show when filters are visible */}
       {showFilters && !fundSearchLoading && funds.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 space-y-2 sm:space-y-0">
-          <div className="flex items-center space-x-4">
-            <p className="text-sm text-gray-600">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 md:mb-4 space-y-2 sm:space-y-0 mx-2 md:mx-0">
+          <div className="flex items-center space-x-3 md:space-x-4">
+            <p className="text-xs md:text-sm text-gray-600">
               Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalFunds)} of {pagination.totalFunds} funds
             </p>
             <select
               value={pagination.limit}
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-              className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="px-2 md:px-3 py-1 border border-gray-300 rounded text-xs md:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value={20}>20 per page</option>
               <option value={50}>50 per page</option>
@@ -893,10 +893,10 @@ const Explore = ({ onBack, investmentType }) => {
 
       {/* Funds Table */}
       {!fundSearchLoading && funds.length > 0 && (
-        <div className="backdrop-blur-sm overflow-hidden">
-          <div className="p-4 lg:p-6 border-b border-blue-400/50" style={{ borderBottomWidth: '1px' }}>
-            <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Available Mutual Funds</h3>
+        <div className="backdrop-blur-sm overflow-hidden mx-0 md:mx-0">
+          <div className="p-3 md:p-4 lg:p-6 border-b border-blue-400/50 mx-2 md:mx-0" style={{ borderBottomWidth: '1px' }}>
+            <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">Available Mutual Funds</h3>
             </div>
           </div>
           
@@ -994,45 +994,54 @@ const Explore = ({ onBack, investmentType }) => {
             </table>
           </div>
 
-          {/* Mobile Cards */}
-          <div className="lg:hidden" style={{ borderTop: '1px solid rgb(96 165 250 / 0.5)' }}>
+          {/* Mobile Cards - Edge-to-Edge */}
+          <div className="lg:hidden">
             {funds.map((fund, index) => (
-              <div key={fund.id} className="p-4 hover:bg-white/50 transition-colors border-b border-blue-400/50" style={{ borderBottomWidth: '1px' }} onClick={() => handleFundClick(fund)}>
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                    <FundIcon fund={fund} />
+              <div 
+                key={fund.id} 
+                className="px-3 py-3 hover:bg-white/50 transition-colors border-b border-gray-200 cursor-pointer"
+                style={{ 
+                  borderBottomWidth: '1px',
+                  marginLeft: 0,
+                  marginRight: 0
+                }} 
+                onClick={() => handleFundClick(fund)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-2 flex-1 min-w-0">
+                    <FundIcon fund={fund} size="w-8 h-8" />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 mb-1 hover:text-blue-600 truncate">{fund.name}</h4>
-                      <p className="text-sm text-gray-500 truncate">by {fund.creator}</p>
+                      <h4 className="text-sm font-medium text-gray-900 mb-0.5 hover:text-blue-600 truncate">{fund.name}</h4>
+                      <p className="text-xs text-gray-500 truncate">by {fund.creator}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2 flex-shrink-0">
+                  <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2 flex-shrink-0 p-1">
                     <Eye className="w-4 h-4" />
                   </Button>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                <div className="grid grid-cols-2 gap-3 text-xs mb-3">
                   <div>
-                    <p className="text-gray-500 text-xs">Category</p>
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                    <p className="text-gray-500 text-xs mb-0.5">Category</p>
+                    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
                       {fund.category}
                     </span>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs">Investment Types</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
+                    <p className="text-gray-500 text-xs mb-0.5">Investment Types</p>
+                    <div className="flex flex-wrap gap-0.5 mt-0.5">
                       {getInvestmentTypeBadges(fund.investmentTypes)}
                     </div>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs">Min Amount</p>
+                    <p className="text-gray-500 text-xs mb-0.5">Min Amount</p>
                     <div className="text-xs text-gray-600">
                       {getMinAmountDisplay(fund)}
                     </div>
                   </div>
                   <div>
-                    <p className="text-gray-500 text-xs">Status</p>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    <p className="text-gray-500 text-xs mb-0.5">Status</p>
+                    <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${
                       fund.status === 'active' 
                         ? 'bg-green-50 text-green-700' 
                         : 'bg-gray-50 text-gray-700'
@@ -1043,7 +1052,7 @@ const Explore = ({ onBack, investmentType }) => {
                 </div>
 
                 <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-full"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-full"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase');
@@ -1052,12 +1061,12 @@ const Explore = ({ onBack, investmentType }) => {
                 >
                   {investmentType === 'sip' ? (
                     <>
-                      <Calendar className="w-4 h-4 mr-2" />
+                      <Calendar className="w-3 h-3 mr-2" />
                       Start SIP
                     </>
                   ) : (
                     <>
-                      <Wallet className="w-4 h-4 mr-2" />
+                      <Wallet className="w-3 h-3 mr-2" />
                       Invest Now
                     </>
                   )}
@@ -1070,27 +1079,29 @@ const Explore = ({ onBack, investmentType }) => {
 
       {/* Pagination */}
       {!fundSearchLoading && funds.length > 0 && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between mt-6 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-          <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-between mt-4 md:mt-6 p-3 md:p-4 bg-white border border-gray-200 rounded-lg shadow-sm mx-2 md:mx-0">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(1)}
               disabled={pagination.page === 1}
+              className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm"
             >
-              <ChevronsLeft className="w-4 h-4" />
+              <ChevronsLeft className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(pagination.page - 1)}
               disabled={!pagination.hasPrev}
+              className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 md:space-x-2">
             {/* Page numbers */}
             {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
               let pageNum;
@@ -1110,7 +1121,7 @@ const Explore = ({ onBack, investmentType }) => {
                   variant={pagination.page === pageNum ? "default" : "outline"}
                   size="sm"
                   onClick={() => handlePageChange(pageNum)}
-                  className={pagination.page === pageNum ? "bg-blue-600 text-white" : ""}
+                  className={`px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm ${pagination.page === pageNum ? "bg-blue-600 text-white" : ""}`}
                 >
                   {pageNum}
                 </Button>
@@ -1118,22 +1129,24 @@ const Explore = ({ onBack, investmentType }) => {
             })}
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 md:space-x-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(pagination.page + 1)}
               disabled={!pagination.hasNext}
+              className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePageChange(pagination.totalPages)}
               disabled={pagination.page === pagination.totalPages}
+              className="px-2 md:px-3 py-1 md:py-1.5 text-xs md:text-sm"
             >
-              <ChevronsRight className="w-4 h-4" />
+              <ChevronsRight className="w-3 h-3 md:w-4 md:h-4" />
             </Button>
           </div>
         </div>
@@ -1141,15 +1154,15 @@ const Explore = ({ onBack, investmentType }) => {
 
       {/* No Results */}
       {!fundSearchLoading && funds.length === 0 && (
-        <div className="text-center py-12">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Search className="w-8 h-8 text-gray-400" />
+        <div className="text-center py-8 md:py-12 mx-2 md:mx-0">
+          <div className="w-12 h-12 md:w-16 md:h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+            <Search className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No funds found</h3>
-          <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+          <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2">No funds found</h3>
+          <p className="text-sm md:text-base text-gray-600">Try adjusting your search or filter criteria</p>
           <Button 
             onClick={clearFilters}
-            className="mt-4"
+            className="mt-3 md:mt-4 text-sm md:text-base"
             variant="outline"
           >
             Clear All Filters

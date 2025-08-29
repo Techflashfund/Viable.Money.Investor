@@ -733,9 +733,10 @@ const LumpsumTransaction = ({
         },
         body: JSON.stringify(requestBody)
       });
-      console.log('Lumpsum Response Status:', response);
+      
 
       const data = await response.json();
+      console.log('Lumpsum Response Data:', data);
 
       if (response.ok && data.success) {
         setLumpsumResponse(data.data);

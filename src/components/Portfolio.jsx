@@ -1,3 +1,4 @@
+'use client';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -10,7 +11,9 @@ import {
   Filter,
   MoreHorizontal,
   PieChart,
-  BarChart3
+  BarChart3,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 // Import the external Explore component
@@ -59,8 +62,8 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
       </div>
 
       {/* Mobile Sub Navigation */}
-      <div className="md:hidden px-4 py-2">
-        <div className="flex space-x-2 overflow-x-auto">
+      <div className="md:hidden px-2 py-2">
+        <div className="flex space-x-1 overflow-x-auto">
           {subMenuItems.map((item) => {
             const isActive = activeSubView === item.id;
             return (
@@ -68,14 +71,14 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
                 key={item.id}
                 onClick={() => handleSubViewClick(item.id)}
                 className={`
-                  flex items-center space-x-2 px-3 py-2 rounded-lg transition-all duration-200 font-medium text-sm whitespace-nowrap
+                  flex items-center space-x-1.5 px-3 py-2 rounded-lg transition-all duration-200 font-medium text-sm whitespace-nowrap
                   ${isActive ? 'bg-blue-50 text-blue-600 border border-blue-200' : 'text-gray-500 hover:text-blue-600 hover:bg-blue-50/50'}
                   ${isTransitioning ? 'pointer-events-none' : ''}
                 `}
                 disabled={isTransitioning}
               >
                 <div className={`flex-shrink-0 transition-all duration-200 ${isActive ? 'scale-110' : 'hover:scale-105'}`}>
-                  {item.icon}
+                  {React.cloneElement(item.icon, { className: 'w-4 h-4' })}
                 </div>
                 <span className="transition-all duration-200">{item.name}</span>
               </button>
@@ -90,81 +93,143 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
   );
 };
 
+// Mobile Quick Actions Component
+const MobileQuickActions = ({ handleNavigateToExplore }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="md:hidden bg-blue-50/30 border-t border-blue-200/40">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full px-3 py-3 flex items-center justify-between text-left"
+      >
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Quick Actions</h3>
+          <p className="text-xs text-gray-600">Start investing now</p>
+        </div>
+        {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+      </button>
+      
+      {isExpanded && (
+        <div className="px-3 pb-3 space-y-2">
+          <div className="bg-white border border-blue-200 p-3 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Start New SIP</h4>
+                <p className="text-xs text-gray-600 mb-2">Begin with ₹500/month</p>
+                <Button 
+                  size="sm"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full"
+                  onClick={() => handleNavigateToExplore('sip')}
+                >
+                  Start SIP
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-blue-200 p-3 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <div className="w-8 h-8 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
+                <Banknote className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
+                <p className="text-xs text-gray-600 mb-2">One-time investment</p>
+                <Button 
+                  size="sm"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full"
+                  onClick={() => handleNavigateToExplore('lumpsum')}
+                >
+                  Invest Now
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Portfolio Overview Component
 const PortfolioOverview = ({ onNavigateToExplore }) => {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
+    <div className="px-0 py-2 md:p-4 lg:p-8 overflow-x-auto">
       {/* Portfolio Summary Cards */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
-        <div className="absolute -top-3 left-4 sm:left-8 bg-blue-50 px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-0">
+        <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Portfolio Overview
         </div>
         
         {/* Responsive Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-2 md:p-4 lg:p-0">
           {/* Total Portfolio Value */}
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <Wallet className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <Wallet className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-600" />
             </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">₹2,45,680</p>
-              <p className="text-sm text-gray-600 truncate">Total Portfolio Value</p>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">₹2,45,680</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Total Portfolio Value</p>
             </div>
           </div>
           
           {/* Current SIPs */}
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <Target className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <Target className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹8,500</p>
-              <p className="text-sm text-gray-600 truncate">Monthly SIP Amount</p>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹8,500</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Monthly SIP Amount</p>
             </div>
           </div>
           
           {/* Invested Amount */}
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <IndianRupee className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <IndianRupee className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹2,18,450</p>
-              <p className="text-sm text-gray-600 truncate">Total Invested</p>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹2,18,450</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Total Invested</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Portfolio Performance Chart */}
-      <div className="mb-6 lg:mb-8">
-        <div className="p-4 lg:p-6">
-          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between mb-4 lg:mb-6">
-            <h3 className="text-lg font-semibold text-gray-900">Portfolio Performance</h3>
-            <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
-              <div className="flex flex-wrap items-center gap-4">
+      <div className="mb-4 md:mb-6 lg:mb-8 mx-2 md:mx-0">
+        <div className="p-3 md:p-4 lg:p-6">
+          <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between mb-3 md:mb-4 lg:mb-6">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Portfolio Performance</h3>
+            <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
+              <div className="flex flex-wrap items-center gap-3 md:gap-4">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-600">Portfolio Value</span>
+                  <div className="w-2 h-2 md:w-3 md:h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-xs md:text-sm text-gray-600">Portfolio Value</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-black rounded-full"></div>
-                  <span className="text-sm text-gray-600">Invested Amount</span>
+                  <div className="w-2 h-2 md:w-3 md:h-3 bg-black rounded-full"></div>
+                  <span className="text-xs md:text-sm text-gray-600">Invested Amount</span>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40 w-fit">6M</Button>
+              <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40 w-fit text-xs md:text-sm px-2 md:px-3 py-1 md:py-2">6M</Button>
             </div>
           </div>
           
-          <div className="mb-4">
-            <p className="text-sm text-gray-600">As of today</p>
-            <p className="text-xl lg:text-2xl font-bold text-gray-900">₹2,45,680</p>
-            <p className="text-sm text-green-600">+₹27,230 (+12.5%)</p>
+          <div className="mb-3 md:mb-4">
+            <p className="text-xs md:text-sm text-gray-600">As of today</p>
+            <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">₹2,45,680</p>
+            <p className="text-xs md:text-sm text-green-600">+₹27,230 (+12.5%)</p>
           </div>
           
           {/* Portfolio Chart - Responsive */}
-          <div className="h-48 lg:h-64 w-full bg-gradient-to-r from-blue-50/50 to-black/5 rounded border border-blue-100/50 flex items-center justify-center relative overflow-hidden">
+          <div className="h-40 md:h-48 lg:h-64 w-full bg-gradient-to-r from-blue-50/50 to-black/5 rounded border border-blue-100/50 flex items-center justify-center relative overflow-hidden">
             <svg className="w-full h-full" viewBox="0 0 600 250" preserveAspectRatio="xMidYMid meet">
               <defs>
                 <pattern id="portfolioGrid" width="50" height="25" patternUnits="userSpaceOnUse">
@@ -194,16 +259,16 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
       </div>
 
       {/* Holdings - Responsive Table */}
-      <div className="backdrop-blur-sm  border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-        <div className="p-4 lg:p-6 border-b border-blue-100/40">
-          <div className="flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Your Holdings</h3>
+      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow mx-2 md:mx-0">
+        <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
+          <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Your Holdings</h3>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40">
-                <Filter className="w-4 h-4 mr-2" />
+              <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40 text-xs md:text-sm px-2 md:px-3 py-1 md:py-2">
+                <Filter className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" />
                 Filter
               </Button>
-              <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">View All</Button>
+              <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50 text-xs md:text-sm px-2 md:px-3 py-1 md:py-2">View All</Button>
             </div>
           </div>
         </div>
@@ -260,17 +325,17 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
             { name: 'ICICI Prudential Bluechip', category: 'Large Cap • Equity', investment: '₹60,000', current: '₹66,780', returns: '+₹6,780 (+11.3%)', sip: '₹2,500', positive: true },
             { name: 'Axis Debt Fund', category: 'Debt • Medium Duration', investment: '₹28,450', current: '₹28,110', returns: '-₹340 (-1.2%)', sip: '₹1,000', positive: false }
           ].map((fund, index) => (
-            <div key={index} className="p-4 hover:bg-white/50 transition-colors">
-              <div className="flex items-center justify-between mb-3">
+            <div key={index} className="p-3 md:p-4 hover:bg-white/50 transition-colors">
+              <div className="flex items-center justify-between mb-2 md:mb-3">
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">{fund.name}</h4>
-                  <p className="text-sm text-gray-500">{fund.category}</p>
+                  <h4 className="text-sm md:font-medium text-gray-900 truncate">{fund.name}</h4>
+                  <p className="text-xs md:text-sm text-gray-500">{fund.category}</p>
                 </div>
-                <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2">
-                  <MoreHorizontal className="w-4 h-4" />
+                <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2 p-1 md:p-2">
+                  <MoreHorizontal className="w-3 h-3 md:w-4 md:h-4" />
                 </Button>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-2 md:gap-4 text-xs md:text-sm">
                 <div>
                   <p className="text-gray-500">Investment</p>
                   <p className="font-medium text-gray-900">{fund.investment}</p>
@@ -299,133 +364,133 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
 // Portfolio Analytics Component
 const PortfolioAnalytics = () => {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 overflow-x-auto">
+    <div className="px-0 py-2 md:p-4 lg:p-8 overflow-x-auto">
       {/* Performance Metrics */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-6 lg:mb-8 relative">
-        <div className="absolute -top-3 left-4 sm:left-8 bg-blue-50 px-4 py-1 text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-0">
+        <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Performance Metrics
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-4 lg:p-0">
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-2 md:p-4 lg:p-0">
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-600" />
             </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">15.2%</p>
-              <p className="text-sm text-gray-600 truncate">Annual Returns (XIRR)</p>
-            </div>
-          </div>
-
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <BarChart3 className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
-            </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">8.4%</p>
-              <p className="text-sm text-gray-600 truncate">Portfolio Volatility</p>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">15.2%</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Annual Returns (XIRR)</p>
             </div>
           </div>
 
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <Target className="w-5 h-5 lg:w-6 lg:h-6 text-black" />
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <BarChart3 className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">1.82</p>
-              <p className="text-sm text-gray-600 truncate">Sharpe Ratio</p>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">8.4%</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Portfolio Volatility</p>
             </div>
           </div>
 
-          <div className="p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-10 h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <TrendingUp className="w-5 h-5 lg:w-6 lg:h-6 text-orange-600 transform rotate-180" />
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <Target className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
-            <div className="pl-6 lg:pl-8">
-              <p className="text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">-8.5%</p>
-              <p className="text-sm text-gray-600 truncate">Max Drawdown</p>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">1.82</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Sharpe Ratio</p>
+            </div>
+          </div>
+
+          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-orange-600 transform rotate-180" />
+            </div>
+            <div className="pl-4 md:pl-6 lg:pl-8">
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">-8.5%</p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Max Drawdown</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Asset Allocation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mx-2 md:mx-0">
         <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-          <div className="p-4 lg:p-6 border-b border-blue-100/40">
-            <h3 className="text-lg font-semibold text-gray-900">Asset Allocation</h3>
+          <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Asset Allocation</h3>
           </div>
-          <div className="p-4 lg:p-6">
-            <div className="space-y-4">
+          <div className="p-3 md:p-4 lg:p-6">
+            <div className="space-y-3 md:space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
-                  <span className="text-sm text-gray-700">Equity Funds</span>
+                <div className="flex items-center space-x-2 md:space-x-3">
+                  <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-xs md:text-sm text-gray-700">Equity Funds</span>
                 </div>
-                <span className="text-sm font-medium text-gray-900">75%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900">75%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
+                <div className="bg-blue-500 h-1.5 md:h-2 rounded-full" style={{ width: '75%' }}></div>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-black rounded-full flex-shrink-0"></div>
-                  <span className="text-sm text-gray-700">Debt Funds</span>
+                <div className="flex items-center space-x-2 md:space-x-3">
+                  <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-black rounded-full flex-shrink-0"></div>
+                  <span className="text-xs md:text-sm text-gray-700">Debt Funds</span>
                 </div>
-                <span className="text-sm font-medium text-gray-900">20%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900">20%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-black h-2 rounded-full" style={{ width: '20%' }}></div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
+                <div className="bg-black h-1.5 md:h-2 rounded-full" style={{ width: '20%' }}></div>
               </div>
 
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-3 h-3 lg:w-4 lg:h-4 bg-yellow-500 rounded-full flex-shrink-0"></div>
-                  <span className="text-sm text-gray-700">Gold ETF</span>
+                <div className="flex items-center space-x-2 md:space-x-3">
+                  <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-yellow-500 rounded-full flex-shrink-0"></div>
+                  <span className="text-xs md:text-sm text-gray-700">Gold ETF</span>
                 </div>
-                <span className="text-sm font-medium text-gray-900">5%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900">5%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '5%' }}></div>
+              <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
+                <div className="bg-yellow-500 h-1.5 md:h-2 rounded-full" style={{ width: '5%' }}></div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-          <div className="p-4 lg:p-6 border-b border-blue-100/40">
-            <h3 className="text-lg font-semibold text-gray-900">Top Holdings</h3>
+          <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Top Holdings</h3>
           </div>
-          <div className="p-4 lg:p-6">
-            <div className="space-y-4">
+          <div className="p-3 md:p-4 lg:p-6">
+            <div className="space-y-3 md:space-y-4">
               <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium text-gray-900 truncate">HDFC Equity Fund</p>
+                <div className="flex-1 min-w-0 mr-3 md:mr-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">HDFC Equity Fund</p>
                   <p className="text-xs text-gray-500">Large Cap</p>
                 </div>
-                <span className="text-sm font-medium text-gray-900 flex-shrink-0">40.1%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">40.1%</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium text-gray-900 truncate">SBI Small Cap Fund</p>
+                <div className="flex-1 min-w-0 mr-3 md:mr-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">SBI Small Cap Fund</p>
                   <p className="text-xs text-gray-500">Small Cap</p>
                 </div>
-                <span className="text-sm font-medium text-gray-900 flex-shrink-0">21.3%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">21.3%</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium text-gray-900 truncate">ICICI Prudential Bluechip</p>
+                <div className="flex-1 min-w-0 mr-3 md:mr-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">ICICI Prudential Bluechip</p>
                   <p className="text-xs text-gray-500">Large Cap</p>
                 </div>
-                <span className="text-sm font-medium text-gray-900 flex-shrink-0">27.2%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">27.2%</span>
               </div>
               <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-4">
-                  <p className="text-sm font-medium text-gray-900 truncate">Axis Debt Fund</p>
+                <div className="flex-1 min-w-0 mr-3 md:mr-4">
+                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">Axis Debt Fund</p>
                   <p className="text-xs text-gray-500">Debt</p>
                 </div>
-                <span className="text-sm font-medium text-gray-900 flex-shrink-0">11.4%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">11.4%</span>
               </div>
             </div>
           </div>
@@ -493,7 +558,7 @@ const Portfolio = () => {
   // Render Explore component if activeView is 'explore'
   if (activeView === 'explore') {
     return (
-      <div className="space-y-6 w-full">
+      <div className="space-y-0 w-full">
         <div className="min-h-[600px] relative overflow-hidden">
           <div className="absolute inset-0 opacity-5">
             <div className="absolute inset-0" style={{
@@ -512,10 +577,10 @@ const Portfolio = () => {
 
   // Render Portfolio component (default)
   return (
-    <div className="flex gap-6 lg:gap-8 min-h-screen w-full">
+    <div className="flex gap-0 lg:gap-8 min-h-screen w-full">
       {/* Left Side - Portfolio Section */}
       <div className="flex-1 transition-all duration-300 ease-in-out">
-        <div className="space-y-6 w-full">
+        <div className="space-y-0 md:space-y-6 w-full">
           <SubNavigation 
             activeSubView={activeSubView}
             setActiveSubView={handleSubViewChange}
@@ -536,18 +601,21 @@ const Portfolio = () => {
             </div>
             
             {isTransitioning && (
-              <div className="absolute top-4 right-4 z-20">
-                <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
+              <div className="absolute top-2 md:top-4 right-2 md:right-4 z-20">
+                <div className="w-4 h-4 md:w-6 md:h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
               </div>
             )}
           </div>
+
+          {/* Mobile Quick Actions */}
+          <MobileQuickActions handleNavigateToExplore={handleNavigateToExplore} />
         </div>
       </div>
       
       {/* Separator - Full Height */}
       <div className="w-px bg-gray-200 flex-shrink-0 hidden lg:block"></div>
       
-      {/* Right Side - Quick Actions Section */}
+      {/* Right Side - Quick Actions Section (Desktop Only) */}
       <div className="w-[28rem] transition-all duration-300 ease-in-out hidden lg:block">
         <div className="sticky top-0 h-screen overflow-y-auto">
           <div className="p-4 sm:p-6 lg:p-8">

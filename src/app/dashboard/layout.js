@@ -1,0 +1,42 @@
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
+import UserTopNav from '../../components/ex/Usertopnav';
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata = {
+  title: "InvestFund Dashboard",
+  description: "Your investment dashboard",
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <div className="min-h-screen font-sans bg-gray-50/30">
+          {/* Top Navigation - Always Visible */}
+          <UserTopNav />
+
+          {/* Main Content Area */}
+          <main className="min-h-[calc(100vh-80px)]">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+              <div className="transition-all duration-300 ease-in-out">
+                {children}
+              </div>
+            </div>
+          </main>
+        </div>
+      </body>
+    </html>
+  );
+}
