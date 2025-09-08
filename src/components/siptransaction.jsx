@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import useAuthStore from '@/store/auth';
 import Loader from '@/components/Loader'; // Custom 3D loader
+import KYCPendingComponent from '@/components/kyc/kyccomp'; // Import KYC component
 import { 
   Calendar, 
   CheckCircle, 
@@ -581,7 +582,7 @@ const PaymentURLComponent = ({ paymentData, onOpenPayment, loading }) => {
   );
 };
 
-// 7. Payment Status Component
+// 6. Payment Status Component
 const PaymentStatusComponent = ({ loading, status, onRetry }) => {
   return (
     <div className="space-y-4">
@@ -645,7 +646,7 @@ const PaymentStatusComponent = ({ loading, status, onRetry }) => {
   );
 };
 
-// 8. Onboarding Incomplete Component
+// 7. Onboarding Incomplete Component
 const OnboardingIncompleteComponent = ({ onCompleteOnboarding }) => {
   return (
     <div className="space-y-4">
@@ -715,6 +716,9 @@ const SIPTransaction = ({
   const [onboardingData, setOnboardingData] = useState(null);
   const [panNumber, setPanNumber] = useState(null);
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
+
+  // KYC related states
+  const [kycData, setKycData] = useState(null);
 
   // Extract SIP fulfillments from fund data
   const getSipFulfillments = () => {
@@ -790,6 +794,13 @@ const SIPTransaction = ({
   // Handle Complete Onboarding Navigation
   const handleCompleteOnboarding = () => {
     window.location.href = '/onboarding';
+  };
+
+  // Handle Complete KYC
+  const handleCompleteKYC = () => {
+    if (kycData?.kycDetails?.formUrl) {
+      window.open(kycData.kycDetails.formUrl, '_blank');
+    }
   };
 
   // Step 1: Handle SIP Form Submission
@@ -945,11 +956,18 @@ const SIPTransaction = ({
         },
         body: JSON.stringify(paymentMethodsBody)
       });
-
+       console.log('Payment Methods Response Status:', paymentMethodsResponse);
       const paymentMethodsData = await paymentMethodsResponse.json();
 
       if (!paymentMethodsResponse.ok || !paymentMethodsData.success) {
         throw new Error(paymentMethodsData.message || 'Failed to get payment methods');
+      }
+
+      // Check if KYC is pending
+      if (paymentMethodsData.data?.status === 'KYC_PENDING') {
+        setKycData(paymentMethodsData.data);
+        setCurrentStep('kyc-pending');
+        return;
       }
 
       // Check if payment methods are available
@@ -1300,6 +1318,13 @@ const SIPTransaction = ({
                 onSelectExistingFolio={() => {}}
                 loading={loading}
                 errors={errors}
+              />
+            )}
+
+            {currentStep === 'kyc-pending' && (
+              <KYCPendingComponent
+                kycData={kycData}
+                onCompleteKYC={handleCompleteKYC}
               />
             )}
 
