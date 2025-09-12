@@ -17,10 +17,110 @@ import {
   Loader2,
   AlertCircle,
   X,
-  Eye
+  Eye,
+  Clock
 } from 'lucide-react';
 import useAuthStore from '@/store/auth';
 import { useRouter } from 'next/navigation';
+
+// Skeleton Loading Components
+const SkeletonCard = ({ className = "" }) => (
+  <div className={`animate-pulse ${className}`}>
+    <div className="bg-gray-300 rounded-lg h-full animate-pulse"></div>
+  </div>
+);
+
+const SkeletonPortfolioSummary = () => (
+  <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-4 lg:mx-8">
+    <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
+      <div className="w-24 h-4 bg-gray-300 rounded animate-pulse"></div>
+    </div>
+    
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-2 md:p-4 lg:p-0">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
+          <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-gray-300 rounded-full animate-pulse z-10 shadow-sm">
+          </div>
+          <div className="pl-4 md:pl-6 lg:pl-8">
+            <div className="w-24 h-6 bg-gray-300 rounded animate-pulse mb-2"></div>
+            <div className="w-20 h-4 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const SkeletonHoldings = () => (
+  <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm mx-2 md:mx-4 lg:mx-8">
+    <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
+      <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
+        <div className="w-32 h-6 bg-gray-300 rounded animate-pulse"></div>
+        <div className="flex items-center space-x-2">
+          <div className="w-16 h-8 bg-gray-300 rounded animate-pulse"></div>
+          <div className="w-20 h-8 bg-gray-300 rounded animate-pulse"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div className="lg:hidden divide-y divide-gray-100">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="p-3 md:p-4">
+          <div className="flex items-center space-x-3 mb-2 md:mb-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-300 rounded-full animate-pulse"></div>
+            <div className="flex-1">
+              <div className="w-40 h-4 bg-gray-300 rounded animate-pulse mb-1"></div>
+              <div className="w-24 h-3 bg-gray-300 rounded animate-pulse"></div>
+            </div>
+            <div className="w-8 h-8 bg-gray-300 rounded animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:gap-4">
+            {[1, 2, 3, 4].map((j) => (
+              <div key={j}>
+                <div className="w-16 h-3 bg-gray-300 rounded animate-pulse mb-1"></div>
+                <div className="w-20 h-4 bg-gray-300 rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div className="hidden lg:block overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b border-gray-200">
+            {['Fund Name', 'Investment', 'Current Value', 'Returns', 'Units', 'Action'].map((header, i) => (
+              <th key={i} className="text-left p-4">
+                <div className="w-20 h-4 bg-gray-300 rounded animate-pulse"></div>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {[1, 2, 3].map((i) => (
+            <tr key={i} className="border-b border-gray-100">
+              <td className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gray-300 rounded-full animate-pulse"></div>
+                  <div>
+                    <div className="w-32 h-4 bg-gray-300 rounded animate-pulse mb-1"></div>
+                    <div className="w-24 h-3 bg-gray-300 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              </td>
+              {[1, 2, 3, 4, 5].map((j) => (
+                <td key={j} className="p-4">
+                  <div className="w-16 h-4 bg-gray-300 rounded animate-pulse"></div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+);
 
 // Fund Icon Component
 const FundIcon = ({ fund, size = "w-10 h-10" }) => {
@@ -143,7 +243,7 @@ const BottomQuickActions = () => {
                 <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
+                  onClick={() => router.push('/explore')}
                 >
                   Start SIP
                 </Button>
@@ -161,7 +261,7 @@ const BottomQuickActions = () => {
                 <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
+                  onClick={() => router.push('/explore')}
                 >
                   Invest Now
                 </Button>
@@ -205,7 +305,7 @@ const MobileQuickActions = () => {
                 <Button 
                   size="sm"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
+                  onClick={() => router.push('/explore')}
                 >
                   Start SIP
                 </Button>
@@ -224,7 +324,7 @@ const MobileQuickActions = () => {
                 <Button 
                   size="sm"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
+                  onClick={() => router.push('/explore')}
                 >
                   Invest Now
                 </Button>
@@ -250,21 +350,12 @@ const EmptyPortfolio = () => {
       <p className="text-gray-600 mb-6 max-w-md">
         You haven't made any investments yet. Begin building wealth with our curated mutual fund selection.
       </p>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button 
-          onClick={() => router.push('/dashboard/explore')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
-        >
-          Start SIP Investment
-        </Button>
-        <Button 
-          onClick={() => router.push('/dashboard/explore')}
-          variant="outline"
-          className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3"
-        >
-          One-time Investment
-        </Button>
-      </div>
+      <Button 
+        onClick={() => router.push('/explore')}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3  font-semibold rounded-full"
+      >
+        Start Investment
+      </Button>
     </div>
   );
 };
@@ -323,30 +414,14 @@ const PortfolioOverview = ({ portfolioData, navData, loading, error, onRefresh }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your portfolio...</p>
-        </div>
+      <div className="w-full max-w-full mt-0 lg:mt-3.5">
+        <SkeletonPortfolioSummary />
+        <SkeletonHoldings />
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
-          <p className="text-gray-600 mb-4">Error loading portfolio data</p>
-          <Button onClick={onRefresh} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!portfolioData || portfolioData.totalFunds === 0) {
+  if (error || !portfolioData || portfolioData.totalFunds === 0) {
     return <EmptyPortfolio />;
   }
 
@@ -657,139 +732,26 @@ const PortfolioOverview = ({ portfolioData, navData, loading, error, onRefresh }
   );
 };
 
-// Portfolio Analytics Component with Real Data
-const PortfolioAnalytics = ({ portfolioData, navData, loading }) => {
-  // Calculate analytics metrics
-  const calculateAnalytics = () => {
-    if (!portfolioData) return { xirr: 0, volatility: 0, sharpeRatio: 0, maxDrawdown: 0 };
-
-    // Mock calculations for now - you can implement proper XIRR and other calculations
-    return {
-      xirr: 15.2,
-      volatility: 8.4,
-      sharpeRatio: 1.82,
-      maxDrawdown: -8.5
-    };
-  };
-
-  const { xirr, volatility, sharpeRatio, maxDrawdown } = calculateAnalytics();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading analytics...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!portfolioData || portfolioData.totalFunds === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">No Analytics Available</h3>
-          <p className="text-gray-500">Start investing to see your portfolio analytics</p>
-        </div>
-      </div>
-    );
-  }
-
+// Portfolio Analytics Component - Coming Soon
+const PortfolioAnalytics = () => {
   return (
     <div className="w-full max-w-full mt-0 lg:mt-3.5">
-      {/* Performance Metrics - Full Width */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-4 lg:mx-8">
-        <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
-          Performance Metrics
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 lg:gap-0 lg:divide-x divide-blue-400/60 p-2 md:p-4 lg:p-0">
-          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-600" />
-            </div>
-            <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">{xirr}%</p>
-              <p className="text-xs md:text-sm text-gray-600 truncate">Annual Returns (XIRR)</p>
-            </div>
+      <div className="flex items-center justify-center min-h-[500px]">
+        <div className="text-center max-w-md mx-auto">
+          <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mb-6 mx-auto">
+            <Clock className="w-10 h-10 text-white" />
           </div>
-
-          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <BarChart3 className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">Coming Soon</h3>
+          <p className="text-gray-600 mb-6 leading-relaxed">
+            We're working on advanced portfolio analytics including performance metrics, 
+            risk analysis, and detailed insights to help you make better investment decisions.
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-center space-x-2 text-blue-700">
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-sm font-medium">Advanced Analytics Dashboard</span>
             </div>
-            <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{volatility}%</p>
-              <p className="text-xs md:text-sm text-gray-600 truncate">Portfolio Volatility</p>
-            </div>
-          </div>
-
-          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <Target className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
-            </div>
-            <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{sharpeRatio}</p>
-              <p className="text-xs md:text-sm text-gray-600 truncate">Sharpe Ratio</p>
-            </div>
-          </div>
-
-          <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
-            <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-orange-600 transform rotate-180" />
-            </div>
-            <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{maxDrawdown}%</p>
-              <p className="text-xs md:text-sm text-gray-600 truncate">Max Drawdown</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Asset Allocation and Top Holdings - Full Width */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mx-2 md:mx-4 lg:mx-8">
-        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-          <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">Asset Allocation</h3>
-          </div>
-          <div className="p-3 md:p-4 lg:p-6">
-            <div className="space-y-3 md:space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 md:space-x-3">
-                  <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
-                  <span className="text-xs md:text-sm text-gray-700">Equity Funds</span>
-                </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900">100%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
-                <div className="bg-blue-500 h-1.5 md:h-2 rounded-full" style={{ width: '100%' }}></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-          <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">Holdings</h3>
-          </div>
-          <div className="p-3 md:p-4 lg:p-6">
-            <div className="space-y-3 md:space-y-4">
-              {portfolioData.folios?.slice(0, 4).map((folio, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0 mr-3 md:mr-4">
-                    <p className="text-xs md:text-sm font-medium text-gray-900 truncate">
-                      Folio {folio.folioNumber}
-                    </p>
-                    <p className="text-xs text-gray-500">{folio.fundHoldings?.length || 0} holdings</p>
-                  </div>
-                  <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">
-                    {((folio.totalFolioValue / portfolioData.totalInvestment) * 100).toFixed(1)}%
-                  </span>
-                </div>
-              ))}
-            </div>
+            <p className="text-xs text-blue-600 mt-1">Expected Launch: Q2 2024</p>
           </div>
         </div>
       </div>
@@ -842,6 +804,11 @@ const Portfolio = () => {
       );
 
       if (!response.ok) {
+        if (response.status === 404) {
+          setPortfolioData(null);
+          setError('No portfolio found');
+          return;
+        }
         throw new Error(`Failed to fetch portfolio: ${response.status}`);
       }
 
@@ -923,13 +890,7 @@ const Portfolio = () => {
             />
           );
         case 'analytics':
-          return (
-            <PortfolioAnalytics 
-              portfolioData={portfolioData}
-              navData={navData}
-              loading={loading}
-            />
-          );
+          return <PortfolioAnalytics />;
         default:
           return (
             <PortfolioOverview 

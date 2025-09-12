@@ -17,7 +17,11 @@ import {
   AlertTriangle,
   X,
   Search,
-  Loader2
+  Loader2,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -44,7 +48,7 @@ const FundIcon = ({ fund, size = "w-10 h-10" }) => {
   };
 
   return (
-    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.fundName)} rounded-full flex items-center justify-center flex-shrink-0`}>
+    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.name)} rounded-full flex items-center justify-center flex-shrink-0`}>
       <div className="w-1/2 h-1/2 bg-white rounded-full opacity-80"></div>
     </div>
   );
@@ -68,18 +72,34 @@ const toTitleCase = (str) => {
     .join(' ');
 };
 
+// Helper function to format currency
+const formatCurrency = (amount) => {
+  if (amount >= 10000000) { // 1 crore
+    return `₹${(amount / 10000000).toFixed(2)} Cr.`;
+  } else if (amount >= 100000) { // 1 lakh
+    return `₹${(amount / 100000).toFixed(2)} L.`;
+  } else if (amount >= 10000) { // 10 thousand and above
+    return `₹${(amount / 1000).toFixed(0)}K`;
+  } else {
+    return `₹${amount.toLocaleString('en-IN')}`;
+  }
+};
+
 const UserTopNav = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [filteredResults, setFilteredResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [showResults, setShowResults] = useState(false);
+  const [showSearchPopup, setShowSearchPopup] = useState(false);
   const [searchError, setSearchError] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   
   const navRef = useRef(null);
   const searchRef = useRef(null);
-  const resultsRef = useRef(null);
+  const popupRef = useRef(null);
+  const searchInputRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   
@@ -89,20 +109,61 @@ const UserTopNav = () => {
     setIsTransitioning(false); // Ensure transition state is cleared
   }, [pathname]);
 
-  // Close search results when clicking outside
+  // Close search popup when clicking outside or pressing ESC
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (searchRef.current && !searchRef.current.contains(event.target) &&
-          resultsRef.current && !resultsRef.current.contains(event.target)) {
-        setShowResults(false);
+      if (popupRef.current && !popupRef.current.contains(event.target)) {
+        setShowSearchPopup(false);
+        setSearchQuery('');
+        setSelectedIndex(-1);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (!showSearchPopup) return;
+
+      switch (event.key) {
+        case 'Escape':
+          setShowSearchPopup(false);
+          setSearchQuery('');
+          setSelectedIndex(-1);
+          break;
+        case 'ArrowDown':
+          event.preventDefault();
+          setSelectedIndex(prev => 
+            prev < filteredResults.length - 1 ? prev + 1 : prev
+          );
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+          break;
+        case 'Enter':
+          event.preventDefault();
+          if (selectedIndex >= 0 && filteredResults[selectedIndex]) {
+            handleFundClick(filteredResults[selectedIndex]);
+          }
+          break;
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, []);
+  }, [showSearchPopup, filteredResults, selectedIndex]);
+
+  // Focus search input when popup opens
+  useEffect(() => {
+    if (showSearchPopup && searchInputRef.current) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [showSearchPopup]);
   
   // Get user data from auth store
   const { user, onboardingstatus, clearAuth } = useAuthStore();
@@ -144,11 +205,21 @@ const UserTopNav = () => {
     }
   ], []);
 
+  // Filter results based on minimum investment amounts
+  useEffect(() => {
+    const filtered = searchResults.filter(fund => {
+      const hasMinSip = fund.minSipAmount && fund.minSipAmount > 0;
+      const hasMinLumpsum = fund.minLumpsumAmount && fund.minLumpsumAmount > 0;
+      return hasMinSip || hasMinLumpsum;
+    });
+    setFilteredResults(filtered);
+    setSelectedIndex(-1); // Reset selection when results change
+  }, [searchResults]);
+
   // Search API function
   const searchFunds = useCallback(async (query) => {
     if (!query.trim()) {
       setSearchResults([]);
-      setShowResults(false);
       return;
     }
 
@@ -161,17 +232,14 @@ const UserTopNav = () => {
       
       if (data.success) {
         setSearchResults(data.data || []);
-        setShowResults(true);
       } else {
         setSearchError('Failed to search funds');
         setSearchResults([]);
-        setShowResults(false);
       }
     } catch (error) {
       console.error('Search error:', error);
       setSearchError('Something went wrong. Please try again.');
       setSearchResults([]);
-      setShowResults(false);
     } finally {
       setIsSearching(false);
     }
@@ -183,7 +251,6 @@ const UserTopNav = () => {
       if (searchQuery) {
         searchFunds(searchQuery);
       } else {
-        setShowResults(false);
         setSearchResults([]);
       }
     }, 300);
@@ -212,16 +279,14 @@ const UserTopNav = () => {
     setShowOnboardingBanner(false);
   }, []);
 
-  const handleSearchSubmit = useCallback((e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      searchFunds(searchQuery);
-    }
-  }, [searchQuery, searchFunds]);
+  const handleSearchClick = useCallback(() => {
+    setShowSearchPopup(true);
+  }, []);
 
   const handleFundClick = useCallback((fund) => {
-    setShowResults(false);
+    setShowSearchPopup(false);
     setSearchQuery('');
+    setSelectedIndex(-1);
     router.push(`/dashboard/explore/${fund.itemId}`);
   }, [router]);
 
@@ -240,9 +305,132 @@ const UserTopNav = () => {
 
   return (
     <div className="w-full relative">
+      {/* Search Popup Modal */}
+      {showSearchPopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-20">
+          <div 
+            ref={popupRef}
+            className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[70vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
+          >
+            {/* Search Header */}
+            <div className="p-6 border-b border-gray-100">
+              <div className="relative">
+                <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="Search for Mutual Funds..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-12 py-3 text-lg border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                />
+                {isSearching ? (
+                  <Loader2 className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-blue-500 animate-spin" />
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowSearchPopup(false);
+                      setSearchQuery('');
+                      setSelectedIndex(-1);
+                    }}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Results */}
+            <div className="flex-1 overflow-y-auto">
+              {searchError ? (
+                <div className="p-8 text-center text-red-500">
+                  <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
+                  <p>{searchError}</p>
+                </div>
+              ) : filteredResults.length > 0 ? (
+                <div className="py-2">
+                  {filteredResults.map((fund, index) => {
+                    const minAmount = fund.minSipAmount || fund.minLumpsumAmount;
+                    const isSelected = index === selectedIndex;
+                    
+                    return (
+                      <div
+                        key={fund._id}
+                        onClick={() => handleFundClick(fund)}
+                        className={`
+                          flex items-center space-x-4 px-6 py-4 cursor-pointer transition-all duration-200
+                          ${isSelected ? 'bg-blue-50 border-l-4 border-blue-500' : 'hover:bg-gray-50'}
+                        `}
+                      >
+                        {/* Green indicator dot */}
+                        <div className="w-3 h-3 bg-green-500 rounded-full flex-shrink-0"></div>
+                        
+                        {/* Fund Icon */}
+                        <FundIcon fund={{ name: fund.fundName }} size="w-10 h-10" />
+                        
+                        {/* Fund Info */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-gray-900 font-medium text-base truncate">
+                            {toTitleCase(fund.fundName)}
+                          </h3>
+                          <div className="flex items-center space-x-6 mt-1 text-sm text-gray-500">
+                            <span>Min: {formatCurrency(minAmount)}</span>
+                            <span className="capitalize">
+                              {fund.primaryCategory?.replace(/_/g, ' ').toLowerCase()}
+                            </span>
+                            <span>Others</span>
+                            <span className="text-blue-600 font-medium">
+                              {fund.fundType || 'Growth'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : searchQuery && !isSearching ? (
+                <div className="p-8 text-center text-gray-500">
+                  <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p>No funds found for "{searchQuery}"</p>
+                  <p className="text-sm mt-1">Try searching with different keywords</p>
+                </div>
+              ) : !searchQuery ? (
+                <div className="p-8 text-center text-gray-400">
+                  <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="text-lg mb-1">Search Mutual Funds</p>
+                  <p className="text-sm">Start typing to find your perfect investment</p>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Navigation Instructions */}
+            <div className="border-t border-gray-100 px-6 py-3 bg-gray-50 rounded-b-xl">
+              <div className="flex items-center justify-between text-sm text-gray-500">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-1">
+                    <ArrowUp className="w-3 h-3" />
+                    <ArrowDown className="w-3 h-3" />
+                    <span>Navigate</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="px-1.5 py-0.5 bg-gray-200 rounded text-xs">↵</div>
+                    <span>Select</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="px-1.5 py-0.5 bg-gray-200 rounded text-xs">esc</div>
+                  <span>Close</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Responsive Onboarding Notification */}
       {shouldShowOnboarding && (
-        <div className="fixed top-12 right-2 lg:top-14 lg:right-12 z-50 max-w-[280px] sm:max-w-[300px] lg:max-w-sm">
+        <div className="fixed top-12 right-2 lg:top-14 lg:right-12 z-40 max-w-[280px] sm:max-w-[300px] lg:max-w-sm">
           <div className="bg-white shadow-lg lg:shadow-xl border border-blue-200 p-2 sm:p-3 lg:p-4 relative animate-in slide-in-from-top-2 duration-300">
             {/* Chat bubble tail - responsive positioning */}
             <div className="absolute -top-1.5 right-4 lg:-top-2 lg:right-6 w-3 h-3 lg:w-4 lg:h-4 bg-white border-l border-t border-blue-200 rotate-45"></div>
@@ -336,69 +524,19 @@ const UserTopNav = () => {
                   </div>
                 </nav>
 
-                {/* Search Bar with Results */}
+                {/* Search Bar */}
                 <div className="relative" ref={searchRef}>
-                  <form onSubmit={handleSearchSubmit} className="relative">
+                  <div 
+                    onClick={handleSearchClick}
+                    className="relative cursor-pointer"
+                  >
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      {isSearching && (
-                        <Loader2 className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 animate-spin" />
-                      )}
-                      <input
-                        type="text"
-                        placeholder="Search funds, transactions..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm placeholder-gray-500"
-                      />
+                      <div className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-200 text-sm text-gray-500">
+                        Search funds, transactions...
+                      </div>
                     </div>
-                  </form>
-
-                  {/* Search Results Dropdown */}
-                  {showResults && (
-                    <div 
-                      ref={resultsRef}
-                      className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto"
-                    >
-                      {searchError ? (
-                        <div className="p-4 text-center text-red-500 text-sm">
-                          {searchError}
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        <div className="py-2">
-                          <div className="px-3 py-2 text-xs text-gray-500 font-medium border-b">
-                            {searchResults.length} fund{searchResults.length > 1 ? 's' : ''} found
-                          </div>
-                          {searchResults.map((fund) => (
-                            <div
-                              key={fund._id}
-                              onClick={() => handleFundClick(fund)}
-                              className="flex items-center space-x-3 px-3 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
-                            >
-                              <FundIcon fund={fund} size="w-10 h-10" />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-medium text-gray-900 truncate">
-                                  {toTitleCase(fund.fundName)}
-                                </h4>
-                                <div className="flex items-center space-x-4 mt-1">
-                                  <p className="text-xs text-gray-500">
-                                    Min: ₹{fund.minSipAmount || fund.minLumpsumAmount}
-                                  </p>
-                                  <p className="text-xs text-blue-600">
-                                    {toTitleCase(fund.primaryCategory.replace(/_/g, ' '))}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : searchQuery && !isSearching ? (
-                        <div className="p-4 text-center text-gray-500 text-sm">
-                          No funds found for "{searchQuery}"
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
@@ -472,67 +610,17 @@ const UserTopNav = () => {
               <div className="flex items-center space-x-2">
                 {/* Mobile Search */}
                 <div className="relative" ref={searchRef}>
-                  <form onSubmit={handleSearchSubmit} className="relative">
+                  <div 
+                    onClick={handleSearchClick}
+                    className="relative cursor-pointer"
+                  >
                     <div className="relative">
                       <Search className="w-4 h-4 absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      {isSearching && (
-                        <Loader2 className="w-4 h-4 absolute right-2.5 top-1/2 transform -translate-y-1/2 text-blue-500 animate-spin" />
-                      )}
-                      <input
-                        type="text"
-                        placeholder="Search..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-32 sm:w-40 pl-8 pr-8 py-1.5 border border-gray-300 rounded-lg bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm placeholder-gray-400"
-                      />
+                      <div className="w-32 sm:w-40 pl-8 pr-8 py-1.5 border border-gray-300 rounded-lg bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-200 text-sm text-gray-400">
+                        Search...
+                      </div>
                     </div>
-                  </form>
-
-                  {/* Mobile Search Results Dropdown */}
-                  {showResults && (
-                    <div 
-                      ref={resultsRef}
-                      className="absolute top-full right-0 mt-1 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-80 overflow-y-auto"
-                    >
-                      {searchError ? (
-                        <div className="p-4 text-center text-red-500 text-sm">
-                          {searchError}
-                        </div>
-                      ) : searchResults.length > 0 ? (
-                        <div className="py-2">
-                          <div className="px-3 py-2 text-xs text-gray-500 font-medium border-b">
-                            {searchResults.length} fund{searchResults.length > 1 ? 's' : ''} found
-                          </div>
-                          {searchResults.map((fund) => (
-                            <div
-                              key={fund._id}
-                              onClick={() => handleFundClick(fund)}
-                              className="flex items-center space-x-3 px-3 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
-                            >
-                              <FundIcon fund={fund} size="w-8 h-8" />
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-medium text-gray-900 line-clamp-2">
-                                  {toTitleCase(fund.fundName)}
-                                </h4>
-                                <div className="flex items-center space-x-3 mt-1">
-                                  <p className="text-xs text-gray-500">
-                                    Min: ₹{fund.minSipAmount || fund.minLumpsumAmount}
-                                  </p>
-                                  <p className="text-xs text-blue-600 truncate">
-                                    {toTitleCase(fund.primaryCategory.replace(/_/g, ' '))}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : searchQuery && !isSearching ? (
-                        <div className="p-4 text-center text-gray-500 text-sm">
-                          No funds found for "{searchQuery}"
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
+                  </div>
                 </div>
                 
                 <DropdownMenu>

@@ -3,36 +3,37 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   Search,
-  ArrowLeft,
-  ArrowRight,
-  Calendar,
-  Banknote,
-  MoreHorizontal,
   Filter,
   Loader2,
   AlertCircle,
-  CheckCircle,
   TrendingUp,
-  FileText,
-  Wallet,
-  Target,
-  IndianRupee,
-  BarChart3,
-  PieChart,
-  Info,
-  Star,
-  Heart,
-  Eye,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight
 } from 'lucide-react';
 
-// Import transaction components
-import SIPTransaction from './siptransaction';
-import LumpsumTransaction from './lumpsumtransaction';
-import FundDetails from './funddetails';
+// Utility function to convert text to camelCase
+const toCamelCase = (str) => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word, index) => {
+      if (index === 0) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join('');
+};
+
+// Utility function to format fund name for display (capitalize first letter of each word)
+const formatFundName = (name) => {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
 
 // Skeleton Components
 const FundTableSkeleton = () => {
@@ -50,12 +51,11 @@ const FundTableSkeleton = () => {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-64">Fund Details</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Category</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Investment Types</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Min Amount</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Status</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Action</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900">Fund Name</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900">Category</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900">Min Amount</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900">Current NAV</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-900">1Yr NAV</th>
             </tr>
           </thead>
           <tbody>
@@ -63,33 +63,21 @@ const FundTableSkeleton = () => {
               <tr key={index} className="border-b border-gray-100">
                 <td className="p-4">
                   <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
-                      <div className="h-3 bg-gray-200 rounded w-32 animate-pulse"></div>
-                    </div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
                   </div>
                 </td>
                 <td className="p-4">
                   <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
                 </td>
                 <td className="p-4">
-                  <div className="flex space-x-2">
-                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
-                    <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
-                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
                 </td>
                 <td className="p-4">
-                  <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                 </td>
                 <td className="p-4">
-                  <div className="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
-                </td>
-                <td className="p-4">
-                  <div className="flex space-x-2">
-                    <div className="h-8 bg-gray-200 rounded-full w-16 animate-pulse"></div>
-                    <div className="h-8 bg-gray-200 rounded w-8 animate-pulse"></div>
-                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
                 </td>
               </tr>
             ))}
@@ -100,28 +88,16 @@ const FundTableSkeleton = () => {
       {/* Mobile Skeleton */}
       <div className="lg:hidden">
         {[...Array(6)].map((_, index) => (
-          <div key={index} className="p-3 border-b border-gray-100">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center space-x-2 flex-1">
+          <div key={index} className="p-4 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 flex-1">
                 <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
                 <div className="flex-1">
-                  <div className="h-3 bg-gray-200 rounded w-32 mb-1 animate-pulse"></div>
-                  <div className="h-2 bg-gray-200 rounded w-20 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-48 mb-2 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-32 animate-pulse"></div>
                 </div>
               </div>
-              <div className="h-6 bg-gray-200 rounded w-6 animate-pulse"></div>
             </div>
-            
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              {[...Array(4)].map((_, i) => (
-                <div key={i}>
-                  <div className="h-2 bg-gray-200 rounded w-12 mb-1 animate-pulse"></div>
-                  <div className="h-3 bg-gray-200 rounded w-16 animate-pulse"></div>
-                </div>
-              ))}
-            </div>
-
-            <div className="h-8 bg-gray-200 rounded-full animate-pulse"></div>
           </div>
         ))}
       </div>
@@ -130,7 +106,7 @@ const FundTableSkeleton = () => {
 };
 
 // Fund Icon Component
-const FundIcon = ({ fund, size = "w-10 h-10" }) => {
+const FundIcon = ({ fund, size = "w-8 h-8" }) => {
   const getGradientColors = (name) => {
     const colors = [
       'from-blue-500 to-purple-600',
@@ -155,15 +131,21 @@ const FundIcon = ({ fund, size = "w-10 h-10" }) => {
 
 // Main Explore Component
 const Explore = () => {
+  // Navigation function (placeholder - replace with your actual router)
+  const navigateToFund = (itemId) => {
+    // Replace this with your actual navigation logic
+    if (typeof window !== 'undefined') {
+      window.location.href = `/dashboard/explore/${itemId}`;
+    }
+    console.log(`Navigating to /dashboard/explore/${itemId}`);
+  };
+
   // State management for filters and pagination
   const [filters, setFilters] = useState({
     search: '',
     category: '',
-    amc: '',
-    investmentType: '',
     minAmount: '',
     maxAmount: '',
-    isin: '',
     sortBy: 'fundName',
     sortOrder: 'asc'
   });
@@ -183,32 +165,9 @@ const Explore = () => {
   const [loading, setLoading] = useState(false);
   const [fundSearchLoading, setFundSearchLoading] = useState(false);
   const [funds, setFunds] = useState([]);
-  const [amcs, setAmcs] = useState([]);
   const [errors, setErrors] = useState({});
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  
-  // Fund details view
-  const [showFundDetails, setShowFundDetails] = useState(false);
-  const [selectedFund, setSelectedFund] = useState(null);
-  
-  // Transaction flow states
-  const [showSIPFlow, setShowSIPFlow] = useState(false);
-  const [showLumpsumFlow, setShowLumpsumFlow] = useState(false);
-  const [transactionSuccess, setTransactionSuccess] = useState(null);
-  
-  // Hard-coded values for investor
-  const HARDCODED_VALUES = {
-    userId: "68788d1562333d9d86a53daf",
-    clientData: {
-      name: "John Doe",
-      pan: "AHUFG2929U"
-    },
-    distributor: {
-      arn: "ARN-123456",
-      euin: "E12345"
-    }
-  };
 
   const categories = [
     { id: '', name: 'All Categories' },
@@ -218,34 +177,25 @@ const Explore = () => {
     { id: 'elss', name: 'ELSS' }
   ];
 
-  const investmentTypes = [
-    { id: '', name: 'All Types' },
-    { id: 'SIP', name: 'SIP' },
-    { id: 'LUMPSUM', name: 'Lumpsum' },
-    { id: 'REDEMPTION', name: 'Redemption' }
-  ];
-
   const sortOptions = [
     { value: 'fundName', label: 'Fund Name' },
-    { value: 'amcName', label: 'AMC Name' },
     { value: 'minSipAmount', label: 'Min SIP Amount' },
     { value: 'minLumpsumAmount', label: 'Min Lumpsum Amount' }
   ];
 
-  // Fetch AMCs and funds on component mount
+  // Fetch funds on component mount
   useEffect(() => {
-    fetchAmcs();
     fetchFunds();
   }, []);
 
-  // Debounced search effect - update filters.search after user stops typing
+  // Debounced search effect
   useEffect(() => {
     const searchDebounce = setTimeout(() => {
       if (filters.search !== searchTerm) {
         setFilters(prev => ({ ...prev, search: searchTerm }));
-        setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page
+        setPagination(prev => ({ ...prev, page: 1 }));
       }
-    }, 500); // 500ms delay
+    }, 500);
 
     return () => clearTimeout(searchDebounce);
   }, [searchTerm]);
@@ -255,193 +205,102 @@ const Explore = () => {
     fetchFunds();
   }, [filters, pagination.page, pagination.limit]);
 
-  const fetchAmcs = async () => {
-  try {
-    const response = await fetch('https://investment.flashfund.in/api/ondc/amcs');
-    const data = await response.json();
-    
-    console.log('AMC API Response:', data);
-    
-    if (data.success && data.data) {
-      const amcOptions = [
-        { id: '', name: 'All AMCs', value: '' }
-      ];
-      
-      // Process AMC data
-      data.data.forEach(amc => {
-        // Make sure we have a valid AMC name
-        if (amc._id && amc._id.trim() !== '') {
-          amcOptions.push({
-            id: amc._id,
-            name: `${amc._id} (${amc.count || 0})`,
-            value: amc._id // Use the actual AMC name as value
-          });
-        }
-      });
-      
-      console.log('Processed AMC options:', amcOptions);
-      setAmcs(amcOptions);
-    } else {
-      console.error('Failed to fetch AMCs:', data);
-    }
-  } catch (error) {
-    console.error('Error fetching AMCs:', error);
-  }
-};
-
   const fetchFunds = async () => {
-  try {
-    setFundSearchLoading(true);
-    setErrors({});
-    
-    // Build query parameters - simplified approach
-    const queryParams = new URLSearchParams();
-    
-    // Add pagination parameters
-    queryParams.append('page', pagination.page.toString());
-    queryParams.append('limit', pagination.limit.toString());
-    
-    // Add filters only if they have values
-    if (filters.search && filters.search.trim() !== '') {
-      queryParams.append('search', filters.search.trim());
-    }
-    
-    if (filters.category && filters.category !== '') {
-      queryParams.append('category', filters.category);
-    }
-    
-    if (filters.amc && filters.amc !== '') {
-      queryParams.append('amc', filters.amc);
-    }
-    
-    if (filters.investmentType && filters.investmentType !== '') {
-      queryParams.append('investmentType', filters.investmentType.toLowerCase());
-    }
-    
-    if (filters.minAmount && filters.minAmount !== '') {
-      queryParams.append('minAmount', filters.minAmount);
-    }
-    
-    if (filters.maxAmount && filters.maxAmount !== '') {
-      queryParams.append('maxAmount', filters.maxAmount);
-    }
-    
-    if (filters.isin && filters.isin.trim() !== '') {
-      queryParams.append('isin', filters.isin.trim());
-    }
-    
-    if (filters.sortBy && filters.sortBy !== '') {
-      queryParams.append('sortBy', filters.sortBy);
-    }
-    
-    if (filters.sortOrder && filters.sortOrder !== '') {
-      queryParams.append('sortOrder', filters.sortOrder);
-    }
-    
-    // Build the final URL
-    const requestUrl = `https://investment.flashfund.in/api/ondc/funds?${queryParams.toString()}`;
-    
-    // Debug: Log the request URL
-    console.log('Fetching funds with URL:', requestUrl);
-    console.log('Applied filters:', filters);
-    
-    const response = await fetch(requestUrl);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    console.log('API Response:', data);
-    console.log('API Response data length:', data.data?.length || 0);
-    
-    if (data.success && data.data) {
-      // Filter out funds with empty fulfillments array
-      const activeFunds = data.data.filter(fund => 
-        fund.fulfillments && fund.fulfillments.length > 0
-      );
+    try {
+      setFundSearchLoading(true);
+      setErrors({});
       
-      console.log('Active funds count:', activeFunds.length);
+      const queryParams = new URLSearchParams();
       
-      const processedFunds = processFundsData(activeFunds);
-      setFunds(processedFunds);
+      // Add pagination parameters
+      queryParams.append('page', pagination.page.toString());
+      queryParams.append('limit', pagination.limit.toString());
       
-      // Update pagination info
-      if (data.pagination) {
-        setPagination(prev => ({
-          ...prev,
-          totalPages: data.pagination.totalPages || 1,
-          totalFunds: data.pagination.totalFunds || 0,
-          hasNext: data.pagination.hasNext || false,
-          hasPrev: data.pagination.hasPrev || false
-        }));
+      // Add filters only if they have values
+      if (filters.search && filters.search.trim() !== '') {
+        queryParams.append('search', filters.search.trim());
       }
-    } else {
-      console.error('API returned unsuccessful response:', data);
-      setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
+      
+      if (filters.category && filters.category !== '') {
+        queryParams.append('category', filters.category);
+      }
+      
+      if (filters.minAmount && filters.minAmount !== '') {
+        queryParams.append('minAmount', filters.minAmount);
+      }
+      
+      if (filters.maxAmount && filters.maxAmount !== '') {
+        queryParams.append('maxAmount', filters.maxAmount);
+      }
+      
+      if (filters.sortBy && filters.sortBy !== '') {
+        queryParams.append('sortBy', filters.sortBy);
+      }
+      
+      if (filters.sortOrder && filters.sortOrder !== '') {
+        queryParams.append('sortOrder', filters.sortOrder);
+      }
+      
+      const requestUrl = `https://investment.flashfund.in/api/ondc/funds?${queryParams.toString()}`;
+      
+      console.log('Fetching funds with URL:', requestUrl);
+      
+      const response = await fetch(requestUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      console.log('API Response:', data);
+      
+      if (data.success && data.data) {
+        const activeFunds = data.data.filter(fund => 
+          fund.fulfillments && fund.fulfillments.length > 0
+        );
+        
+        const processedFunds = processFundsData(activeFunds);
+        setFunds(processedFunds);
+        
+        // Update pagination info
+        if (data.pagination) {
+          setPagination(prev => ({
+            ...prev,
+            totalPages: data.pagination.totalPages || 1,
+            totalFunds: data.pagination.totalFunds || 0,
+            hasNext: data.pagination.hasNext || false,
+            hasPrev: data.pagination.hasPrev || false
+          }));
+        }
+      } else {
+        console.error('API returned unsuccessful response:', data);
+        setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
+      }
+      
+    } catch (error) {
+      console.error('Error fetching funds:', error);
+      setErrors({ fundSearch: `Failed to load funds: ${error.message}` });
+    } finally {
+      setFundSearchLoading(false);
     }
-    
-  } catch (error) {
-    console.error('Error fetching funds:', error);
-    setErrors({ fundSearch: `Failed to load funds: ${error.message}` });
-  } finally {
-    setFundSearchLoading(false);
-  }
-};
+  };
 
   const processFundsData = (rawFunds) => {
     return rawFunds.map(fund => {
-      // Extract AMC name with better logic
-      let amcName = 'N/A';
-      
-      if (fund.amcName && fund.amcName.trim() !== '') {
-        amcName = fund.amcName;
-      } else if (fund.schemeName) {
-        // Try to extract AMC name from scheme name
-        const schemeName = fund.schemeName;
-        if (schemeName.includes('360 ONE')) {
-          amcName = '360 ONE Mutual Fund';
-        } else if (schemeName.includes('HDFC')) {
-          amcName = 'HDFC Mutual Fund';
-        } else if (schemeName.includes('ICICI')) {
-          amcName = 'ICICI Prudential Mutual Fund';
-        } else if (schemeName.includes('Axis')) {
-          amcName = 'Axis Mutual Fund';
-        } else if (schemeName.includes('Kotak')) {
-          amcName = 'Kotak Mahindra Mutual Fund';
-        } else if (schemeName.includes('Aditya Birla')) {
-          amcName = 'Aditya Birla Sun Life Mutual Fund';
-        } else if (schemeName.includes('DSP')) {
-          amcName = 'DSP Mutual Fund';
-        } else if (schemeName.includes('Motilal Oswal')) {
-          amcName = 'Motilal Oswal Mutual Fund';
-        } else if (schemeName.includes('Nippon')) {
-          amcName = 'Nippon India Mutual Fund';
-        } else if (schemeName.includes('Quant')) {
-          amcName = 'Quant Mutual Fund';
-        } else if (schemeName.includes('UTI')) {
-          amcName = 'UTI Mutual Fund';
-        }
-      }
-
       return {
         id: fund.fundId || fund.itemId || fund._id,
-        name: fund.fundName || fund.schemeName || 'N/A',
-        creator: amcName,
+        name: formatFundName(fund.fundName || fund.schemeName || 'N/A'),
+        camelCaseName: toCamelCase(fund.fundName || fund.schemeName || 'N/A'),
         category: getCategoryDisplayName(fund.primaryCategory),
         type: fund.primaryCategory || 'mixed',
-        status: fund.isActive ? 'active' : 'inactive',
         providerId: fund.providerId,
         fulfillments: fund.fulfillments || [],
         investmentTypes: fund.investmentTypes || [],
         minSip: fund.minSipAmount || null,
         minLumpsum: fund.minLumpsumAmount || null,
         maxSip: fund.maxSipAmount || null,
-        isin: fund.isin || fund.planIdentifiers?.isin || null,
-        planOptions: fund.planOptions || null,
-        categories: fund.categories || [],
-        rawData: fund // Store original data for transaction processing
+        rawData: fund
       };
     });
   };
@@ -460,13 +319,12 @@ const Explore = () => {
   // Handle filter changes
   const handleFilterChange = (key, value) => {
     if (key === 'search') {
-      // Handle search separately to avoid focus issues
       setSearchTerm(value);
       return;
     }
     
     setFilters(prev => ({ ...prev, [key]: value }));
-    setPagination(prev => ({ ...prev, page: 1 })); // Reset to first page when filters change
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   // Handle search input change
@@ -485,98 +343,26 @@ const Explore = () => {
     setPagination(prev => ({ ...prev, limit: newLimit, page: 1 }));
   };
 
-  // Handle fund details view
+  // Handle fund click to navigate to details page
   const handleFundClick = (fund) => {
-    setSelectedFund(fund);
-    setShowFundDetails(true);
-  };
-
-  // Handle investment from details page
-  const handleInvestmentFromDetails = (fund, type) => {
-    if (type === 'sip') {
-      setShowSIPFlow(true);
-    } else if (type === 'purchase') {
-      setShowLumpsumFlow(true);
-    }
-    setShowFundDetails(false);
-  };
-
-  // Handle fund investment
-  const handleInvestment = (fund, type) => {
-    setSelectedFund(fund);
-    
-    if (type === 'sip') {
-      setShowSIPFlow(true);
-    } else if (type === 'purchase') {
-      setShowLumpsumFlow(true);
-    }
-  };
-
-  // Handle back from transaction flows
-  const handleBackFromTransaction = () => {
-    setShowSIPFlow(false);
-    setShowLumpsumFlow(false);
-    setSelectedFund(null);
-    setTransactionSuccess(null);
-  };
-
-  // Handle back from fund details
-  const handleBackFromDetails = () => {
-    setShowFundDetails(false);
-    setSelectedFund(null);
-  };
-
-  // Handle folio selection completion for both SIP and Lumpsum
-  const handleFolioSelection = (responseData, folioType) => {
-    console.log('Folio selection complete:', folioType, responseData);
-    
-    // Set success state with transaction details
-    setTransactionSuccess({
-      type: showSIPFlow ? 'SIP' : 'LUMPSUM',
-      folioType: folioType,
-      data: responseData,
-      fund: selectedFund
-    });
-
-    // Hide transaction flows
-    setShowSIPFlow(false);
-    setShowLumpsumFlow(false);
-    
-    // Show success message for 3 seconds then reset
-    setTimeout(() => {
-      setTransactionSuccess(null);
-      setSelectedFund(null);
-    }, 3000);
-  };
-
-  const getInvestmentTypeBadges = (investmentTypes) => {
-    if (!investmentTypes || investmentTypes.length === 0) return null;
-    
-    return investmentTypes.slice(0, 2).map(type => (
-      <span key={type} className="inline-block px-1.5 md:px-2 py-0.5 md:py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full mr-1">
-        {type}
-      </span>
-    ));
+    navigateToFund(fund.id);
   };
 
   const getMinAmountDisplay = (fund) => {
     const amounts = [];
-    if (fund.minSip) amounts.push(`SIP: ₹${fund.minSip}`);
-    if (fund.minLumpsum) amounts.push(`Lumpsum: ₹${fund.minLumpsum}`);
-    return amounts.length > 0 ? amounts.join(', ') : 'N/A';
+    if (fund.minSip) amounts.push(`SIP: ₹${fund.minSip.toLocaleString()}`);
+    if (fund.minLumpsum) amounts.push(`Lumpsum: ₹${fund.minLumpsum.toLocaleString()}`);
+    return amounts.length > 0 ? amounts.join(' | ') : 'N/A';
   };
 
   // Clear all filters
   const clearFilters = () => {
-    setSearchTerm(''); // Clear search term
+    setSearchTerm('');
     setFilters({
       search: '',
       category: '',
-      amc: '',
-      investmentType: '',
       minAmount: '',
       maxAmount: '',
-      isin: '',
       sortBy: 'fundName',
       sortOrder: 'asc'
     });
@@ -585,95 +371,10 @@ const Explore = () => {
   // Toggle filter visibility
   const toggleFilters = () => {
     setShowFilters(!showFilters);
-    // Close advanced filters if main filters are hidden
     if (!showFilters === false) {
       setShowAdvancedFilters(false);
     }
   };
-
-  // If showing fund details, render fund details component
-  if (showFundDetails) {
-    return (
-      <FundDetails
-        fund={selectedFund}
-        onBack={handleBackFromDetails}
-        onInvest={handleInvestmentFromDetails}
-      />
-    );
-  }
-
-  // If showing transaction flows, render them
-  if (showSIPFlow) {
-    return (
-      <SIPTransaction
-        clientData={HARDCODED_VALUES.clientData}
-        fundData={selectedFund}
-        transactionData={{
-          providerId: selectedFund?.providerId,
-          itemId: selectedFund?.id,
-          fulfillmentId: selectedFund?.fulfillments?.find(f => f.type === 'SIP')?.fulfillmentId
-        }}
-        onBack={handleBackFromTransaction}
-        onFolioSelection={handleFolioSelection}
-      />
-    );
-  }
-
-  if (showLumpsumFlow) {
-    return (
-      <LumpsumTransaction
-        clientData={HARDCODED_VALUES.clientData}
-        fundData={selectedFund}
-        transactionData={{
-          providerId: selectedFund?.providerId,
-          itemId: selectedFund?.id,
-          fulfillmentId: selectedFund?.fulfillments?.find(f => f.type === 'LUMPSUM')?.fulfillmentId
-        }}
-        onBack={handleBackFromTransaction}
-        onFolioSelection={handleFolioSelection}
-      />
-    );
-  }
-
-  // Success Animation Overlay
-  if (transactionSuccess) {
-    return (
-      <div className="fixed inset-0 bg-white bg-opacity-95 flex items-center justify-center z-50">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-24 h-24 mx-auto mb-6 bg-green-500 rounded-full flex items-center justify-center animate-bounce">
-              <CheckCircle className="w-12 h-12 text-white" />
-            </div>
-            
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">
-              {transactionSuccess.type === 'SIP' ? 'SIP Setup Complete!' : 'Investment Submitted!'}
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {transactionSuccess.folioType === 'new' 
-                ? 'New folio created successfully. You can now proceed with payment.'
-                : 'Transaction processed successfully.'
-              }
-            </p>
-            
-            <div className="bg-blue-50 p-4 rounded-lg mb-4">
-              <p className="text-sm text-blue-900 font-medium">{transactionSuccess.fund?.name}</p>
-              <p className="text-xs text-blue-700">by {transactionSuccess.fund?.creator}</p>
-            </div>
-            
-            <div className="flex justify-center mt-4 space-x-1">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"
-                  style={{ animationDelay: `${i * 0.2}s` }}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="px-0 py-2 md:p-4 lg:p-8 overflow-x-auto">
@@ -702,7 +403,7 @@ const Explore = () => {
                 Mutual Fund Investments
               </h1>
               <p className="text-xs md:text-sm text-gray-600">
-                Choose from our curated list of top-performing mutual funds for SIP & Lumpsum investments
+                Browse and explore our curated list of mutual funds
               </p>
             </div>
           </div>
@@ -711,11 +412,10 @@ const Explore = () => {
             <div className="flex items-center space-x-2 bg-blue-50 px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40">
               <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
               <span className="text-xs md:text-sm font-medium text-blue-600">
-                SIP & Lumpsum Available
+                Click to view details
               </span>
             </div>
             
-            {/* Filter Toggle Button */}
             <Button
               onClick={toggleFilters}
               className="bg-white hover:bg-blue-100 text-black border border-blue-200 px-3 md:px-4 py-1.5 md:py-2 rounded-full text-xs md:text-sm"
@@ -754,7 +454,7 @@ const Explore = () => {
               <Search className="absolute left-2.5 md:left-3 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search funds by name, AMC, ISIN..."
+                placeholder="Search funds by name..."
                 className="w-full pl-8 md:pl-10 pr-3 md:pr-4 py-2.5 md:py-3 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-sm md:text-base"
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -774,22 +474,6 @@ const Explore = () => {
                 {categories.map(category => (
                   <option key={category.id} value={category.id}>
                     {category.name}
-                  </option>
-                ))}
-              </select>
-
-             
-
-              {/* Investment Type Filter */}
-              <select
-                value={filters.investmentType}
-                onChange={(e) => handleFilterChange('investmentType', e.target.value)}
-                className="px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-xs md:text-sm"
-                disabled={fundSearchLoading}
-              >
-                {investmentTypes.map(type => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
                   </option>
                 ))}
               </select>
@@ -818,7 +502,7 @@ const Explore = () => {
 
             {/* Advanced Filters */}
             {showAdvancedFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 p-3 md:p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
                   <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Min Amount</label>
                   <input
@@ -853,24 +537,13 @@ const Explore = () => {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Sort Order</label>
-                  <select
-                    value={filters.sortOrder}
-                    onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                    className="w-full px-2 md:px-3 py-1.5 md:py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-xs md:text-sm"
-                  >
-                    <option value="asc">Ascending</option>
-                    <option value="desc">Descending</option>
-                  </select>
-                </div>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Results Count and Pagination Info - Only show when filters are visible */}
+      {/* Results Count and Pagination Info */}
       {showFilters && !fundSearchLoading && funds.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 md:mb-4 space-y-2 sm:space-y-0 mx-2 md:mx-0">
           <div className="flex items-center space-x-3 md:space-x-4">
@@ -893,7 +566,7 @@ const Explore = () => {
       {/* Loading State - Show Skeleton */}
       {fundSearchLoading && <FundTableSkeleton />}
 
-      {/* Funds Table */}
+      {/* Funds Table - NEW STRUCTURE WITHOUT ACTION BUTTONS */}
       {!fundSearchLoading && funds.length > 0 && (
         <div className="backdrop-blur-sm overflow-hidden mx-0 md:mx-0">
           <div className="p-3 md:p-4 lg:p-6 border-b border-blue-400/50 mx-2 md:mx-0" style={{ borderBottomWidth: '1px' }}>
@@ -902,31 +575,31 @@ const Explore = () => {
             </div>
           </div>
           
-          {/* Desktop Table */}
+          {/* Desktop Table - WITH NAV COLUMNS */}
           <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-blue-200/50" style={{ borderBottomWidth: '1px' }}>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-64">Fund Details</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Category</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Investment Types</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Min Amount</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Status</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Actions</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900">Fund Name</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900">Category</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900">Min Amount</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900">Current NAV</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900">1Yr NAV</th>
                 </tr>
               </thead>
               <tbody>
                 {funds.map((fund, index) => (
-                  <tr key={fund.id} className="border-b border-blue-300/50 hover:bg-white/50 transition-colors" style={{ borderBottomWidth: '1px' }}>
+                  <tr 
+                    key={fund.id} 
+                    className="border-b border-blue-300/50 hover:bg-white/50 transition-colors cursor-pointer" 
+                    style={{ borderBottomWidth: '1px' }}
+                    onClick={() => handleFundClick(fund)}
+                  >
                     <td className="p-4 text-sm">
-                      <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleFundClick(fund)}>
+                      <div className="flex items-center space-x-3">
                         <FundIcon fund={fund} />
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900 mb-1 hover:text-blue-600">{fund.name}</p>
-                          <p className="text-gray-500 text-xs">by {fund.creator}</p>
-                          {fund.isin && (
-                            <p className="text-gray-400 text-xs mt-1">ISIN: {fund.isin}</p>
-                          )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 hover:text-blue-600 truncate">{fund.name}</p>
                         </div>
                       </div>
                     </td>
@@ -936,65 +609,15 @@ const Explore = () => {
                       </span>
                     </td>
                     <td className="p-4 text-sm">
-                      <div className="flex flex-wrap gap-1">
-                        {getInvestmentTypeBadges(fund.investmentTypes)}
-                      </div>
-                    </td>
-                    <td className="p-4 text-sm">
                       <div className="text-xs text-gray-600">
                         {getMinAmountDisplay(fund)}
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        fund.status === 'active' 
-                          ? 'bg-green-50 text-green-700' 
-                          : 'bg-gray-50 text-gray-700'
-                      }`}>
-                        {fund.status}
-                      </span>
+                      <span className="text-xs text-gray-500">Data not available</span>
                     </td>
                     <td className="p-4 text-sm">
-                      <div className="flex items-center space-x-2">
-                        {/* SIP Button */}
-                        <Button 
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleInvestment(fund, 'sip');
-                          }}
-                          disabled={fund.status !== 'active'}
-                        >
-                          <Calendar className="w-3 h-3 mr-1" />
-                          SIP
-                        </Button>
-                        {/* Lumpsum Button */}
-                        <Button 
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded-full"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleInvestment(fund, 'purchase');
-                          }}
-                          disabled={fund.status !== 'active'}
-                        >
-                          <Wallet className="w-3 h-3 mr-1" />
-                          Buy
-                        </Button>
-                        {/* View Details Button */}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="hover:bg-white/50 p-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleFundClick(fund);
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <span className="text-xs text-gray-500">Data not available</span>
                     </td>
                   </tr>
                 ))}
@@ -1002,12 +625,12 @@ const Explore = () => {
             </table>
           </div>
 
-          {/* Mobile Cards - Edge-to-Edge */}
+          {/* Mobile Cards - WITH NAV INFO */}
           <div className="lg:hidden">
             {funds.map((fund, index) => (
               <div 
                 key={fund.id} 
-                className="px-3 py-3 hover:bg-white/50 transition-colors border-b border-gray-200 cursor-pointer"
+                className="px-4 py-4 hover:bg-white/50 transition-colors border-b border-gray-200 cursor-pointer"
                 style={{ 
                   borderBottomWidth: '1px',
                   marginLeft: 0,
@@ -1015,75 +638,26 @@ const Explore = () => {
                 }} 
                 onClick={() => handleFundClick(fund)}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    <FundIcon fund={fund} size="w-8 h-8" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                    <FundIcon fund={fund} />
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-900 mb-0.5 hover:text-blue-600 truncate">{fund.name}</h4>
-                      <p className="text-xs text-gray-500 truncate">by {fund.creator}</p>
+                      <h4 className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate">{fund.name}</h4>
+                      <div className="flex items-center space-x-3 mt-1">
+                        <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
+                          {fund.category}
+                        </span>
+                        <span className="text-xs text-gray-600">{getMinAmountDisplay(fund)}</span>
+                      </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2 flex-shrink-0 p-1">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-                  <div>
-                    <p className="text-gray-500 text-xs mb-0.5">Category</p>
-                    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-                      {fund.category}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs mb-0.5">Investment Types</p>
-                    <div className="flex flex-wrap gap-0.5 mt-0.5">
-                      {getInvestmentTypeBadges(fund.investmentTypes)}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs mb-0.5">Min Amount</p>
-                    <div className="text-xs text-gray-600">
-                      {getMinAmountDisplay(fund)}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 text-xs mb-0.5">Status</p>
-                    <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${
-                      fund.status === 'active' 
-                        ? 'bg-green-50 text-green-700' 
-                        : 'bg-gray-50 text-gray-700'
-                    }`}>
-                      {fund.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Investment Buttons */}
-                <div className="flex space-x-2">
-                  <Button 
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleInvestment(fund, 'sip');
-                    }}
-                    disabled={fund.status !== 'active'}
-                  >
-                    <Calendar className="w-3 h-3 mr-2" />
-                    Start SIP
-                  </Button>
                   
-                  <Button 
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-full"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleInvestment(fund, 'purchase');
-                    }}
-                    disabled={fund.status !== 'active'}
-                  >
-                    <Wallet className="w-3 h-3 mr-2" />
-                    Buy Now
-                  </Button>
+                  <div className="flex flex-col items-end space-y-1 ml-3 text-right">
+                    <div className="text-xs text-gray-500">
+                      <div>Current NAV: N/A</div>
+                      <div>1Yr NAV: N/A</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1116,7 +690,6 @@ const Explore = () => {
           </div>
 
           <div className="flex items-center space-x-1 md:space-x-2">
-            {/* Page numbers */}
             {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
               let pageNum;
               if (pagination.totalPages <= 5) {
