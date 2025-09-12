@@ -243,7 +243,7 @@ const BottomQuickActions = () => {
                 <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
-                  onClick={() => router.push('/explore')}
+                  onClick={() => router.push('/dashboard/explore')}
                 >
                   Start SIP
                 </Button>
@@ -261,7 +261,7 @@ const BottomQuickActions = () => {
                 <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
                 <Button 
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
-                  onClick={() => router.push('/explore')}
+                  onClick={() => router.push('/dashboard/explore')}
                 >
                   Invest Now
                 </Button>
@@ -305,7 +305,7 @@ const MobileQuickActions = () => {
                 <Button 
                   size="sm"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
-                  onClick={() => router.push('/explore')}
+                  onClick={() => router.push('/dashboard/explore')}
                 >
                   Start SIP
                 </Button>
@@ -324,7 +324,7 @@ const MobileQuickActions = () => {
                 <Button 
                   size="sm"
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
-                  onClick={() => router.push('/explore')}
+                  onClick={() => router.push('/dashboard/explore')}
                 >
                   Invest Now
                 </Button>
@@ -351,7 +351,7 @@ const EmptyPortfolio = () => {
         You haven't made any investments yet. Begin building wealth with our curated mutual fund selection.
       </p>
       <Button 
-        onClick={() => router.push('/explore')}
+        onClick={() => router.push('/dashboard/explore')}
         className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3  font-semibold rounded-full"
       >
         Start Investment
