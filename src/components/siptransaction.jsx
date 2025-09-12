@@ -880,6 +880,7 @@ const SIPTransaction = ({
       });
 
       const data = await response.json();
+      console.log('SIP Submission Response:', data);
 
       if (response.ok && data.success) {
         setSipResponse(data.data);

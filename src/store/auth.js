@@ -1,6 +1,21 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+// Helper functions for cookie management
+const setCookie = (name, value, days = 7) => {
+  if (typeof window !== 'undefined') {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;secure;samesite=strict`;
+  }
+};
+
+const deleteCookie = (name) => {
+  if (typeof window !== 'undefined') {
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+  }
+};
+
 const useAuthStore = create(
   persist(
     (set, get) => ({
@@ -14,6 +29,9 @@ const useAuthStore = create(
 
       // Set user data and token
       setAuth: (userData, token, onboardingstatus = null) => {
+        // Set token in cookies for middleware access
+        setCookie('auth-token', token);
+        
         set({
           user: userData,
           token: token,
@@ -25,6 +43,9 @@ const useAuthStore = create(
 
       // Clear auth data
       clearAuth: () => {
+        // Remove token from cookies
+        deleteCookie('auth-token');
+        
         set({
           user: null,
           token: null,

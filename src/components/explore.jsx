@@ -154,7 +154,7 @@ const FundIcon = ({ fund, size = "w-10 h-10" }) => {
 };
 
 // Main Explore Component
-const Explore = ({ onBack, investmentType }) => {
+const Explore = () => {
   // State management for filters and pagination
   const [filters, setFilters] = useState({
     search: '',
@@ -256,117 +256,139 @@ const Explore = ({ onBack, investmentType }) => {
   }, [filters, pagination.page, pagination.limit]);
 
   const fetchAmcs = async () => {
-    try {
-      const response = await fetch('https://investment.flashfund.in/api/ondc/amcs');
-      const data = await response.json();
+  try {
+    const response = await fetch('https://investment.flashfund.in/api/ondc/amcs');
+    const data = await response.json();
+    
+    console.log('AMC API Response:', data);
+    
+    if (data.success && data.data) {
+      const amcOptions = [
+        { id: '', name: 'All AMCs', value: '' }
+      ];
       
-      if (data.success && data.data) {
-        const amcOptions = [
-          { id: '', name: 'All AMCs' },
-          ...data.data
-            .filter(amc => amc._id && amc._id.trim() !== '') // Filter out empty AMC names
-            .map(amc => ({
-              id: amc._id,
-              name: `${amc._id} (${amc.count})`,
-              value: amc._id // Store the actual value to send to API
-            }))
-        ];
-        setAmcs(amcOptions);
-      }
-    } catch (error) {
-      console.error('Error fetching AMCs:', error);
-    }
-  };
-
-  const fetchFunds = async () => {
-    try {
-      setFundSearchLoading(true);
-      setErrors({});
-      
-      // Build query parameters with AMC filtering workaround
-      let queryParams = {
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-      };
-      
-      // Add other filters
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== '') {
-          if (key === 'amc') {
-            // For AMC filtering, use both amc parameter and search parameter
-            // This helps catch funds where amcName is empty but scheme name contains AMC name
-            queryParams[key] = value;
-            
-            // Also add search parameter to catch funds by scheme name
-            const amcSearchTerms = {
-              '360 ONE Mutual Fund': '360 ONE',
-              'HDFC Mutual Fund': 'HDFC',
-              'ICICI Prudential Mutual Fund': 'ICICI',
-              'Axis Mutual Fund': 'Axis',
-              'Kotak Mahindra Mutual Fund': 'Kotak',
-              'Aditya Birla Sun Life Mutual Fund': 'Aditya Birla',
-              'DSP Mutual Fund': 'DSP',
-              'Motilal Oswal Mutual Fund': 'Motilal Oswal',
-              'Nippon India Mutual Fund': 'Nippon',
-              'Quant Mutual Fund': 'Quant',
-              'UTI Mutual Fund': 'UTI'
-            };
-            
-            // If we have a search term for this AMC, add it (only if no explicit search is set)
-            if (amcSearchTerms[value] && !filters.search) {
-              queryParams.search = amcSearchTerms[value];
-            }
-          } else {
-            queryParams[key] = value;
-          }
+      // Process AMC data
+      data.data.forEach(amc => {
+        // Make sure we have a valid AMC name
+        if (amc._id && amc._id.trim() !== '') {
+          amcOptions.push({
+            id: amc._id,
+            name: `${amc._id} (${amc.count || 0})`,
+            value: amc._id // Use the actual AMC name as value
+          });
         }
       });
       
-      const params = new URLSearchParams(queryParams);
-      
-      // Debug: Log the request URL
-      const requestUrl = `https://investment.flashfund.in/api/ondc/funds?${params}`;
-      console.log('Fetching funds with URL:', requestUrl);
-      console.log('Applied filters:', filters);
-      
-      const response = await fetch(requestUrl);
-      const data = await response.json();
-      
-      console.log('API Response data length:', data.data?.length || 0);
-      
-      if (data.success && data.data) {
-        // Filter out funds with empty fulfillments array
-        const activeFunds = data.data.filter(fund => 
-          fund.fulfillments && fund.fulfillments.length > 0
-        );
-        
-        console.log('Active funds count:', activeFunds.length);
-        console.log('Filtered by AMC:', filters.amc);
-        
-        const processedFunds = processFundsData(activeFunds);
-        setFunds(processedFunds);
-        
-        // Update pagination info
-        if (data.pagination) {
-          setPagination(prev => ({
-            ...prev,
-            totalPages: data.pagination.totalPages || 1,
-            totalFunds: data.pagination.totalFunds || 0,
-            hasNext: data.pagination.hasNext || false,
-            hasPrev: data.pagination.hasPrev || false
-          }));
-        }
-      } else {
-        setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
-      }
-      
-      setFundSearchLoading(false);
-    } catch (error) {
-      console.error('Error fetching funds:', error);
-      setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
-      setFundSearchLoading(false);
+      console.log('Processed AMC options:', amcOptions);
+      setAmcs(amcOptions);
+    } else {
+      console.error('Failed to fetch AMCs:', data);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching AMCs:', error);
+  }
+};
+
+  const fetchFunds = async () => {
+  try {
+    setFundSearchLoading(true);
+    setErrors({});
+    
+    // Build query parameters - simplified approach
+    const queryParams = new URLSearchParams();
+    
+    // Add pagination parameters
+    queryParams.append('page', pagination.page.toString());
+    queryParams.append('limit', pagination.limit.toString());
+    
+    // Add filters only if they have values
+    if (filters.search && filters.search.trim() !== '') {
+      queryParams.append('search', filters.search.trim());
+    }
+    
+    if (filters.category && filters.category !== '') {
+      queryParams.append('category', filters.category);
+    }
+    
+    if (filters.amc && filters.amc !== '') {
+      queryParams.append('amc', filters.amc);
+    }
+    
+    if (filters.investmentType && filters.investmentType !== '') {
+      queryParams.append('investmentType', filters.investmentType.toLowerCase());
+    }
+    
+    if (filters.minAmount && filters.minAmount !== '') {
+      queryParams.append('minAmount', filters.minAmount);
+    }
+    
+    if (filters.maxAmount && filters.maxAmount !== '') {
+      queryParams.append('maxAmount', filters.maxAmount);
+    }
+    
+    if (filters.isin && filters.isin.trim() !== '') {
+      queryParams.append('isin', filters.isin.trim());
+    }
+    
+    if (filters.sortBy && filters.sortBy !== '') {
+      queryParams.append('sortBy', filters.sortBy);
+    }
+    
+    if (filters.sortOrder && filters.sortOrder !== '') {
+      queryParams.append('sortOrder', filters.sortOrder);
+    }
+    
+    // Build the final URL
+    const requestUrl = `https://investment.flashfund.in/api/ondc/funds?${queryParams.toString()}`;
+    
+    // Debug: Log the request URL
+    console.log('Fetching funds with URL:', requestUrl);
+    console.log('Applied filters:', filters);
+    
+    const response = await fetch(requestUrl);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    console.log('API Response:', data);
+    console.log('API Response data length:', data.data?.length || 0);
+    
+    if (data.success && data.data) {
+      // Filter out funds with empty fulfillments array
+      const activeFunds = data.data.filter(fund => 
+        fund.fulfillments && fund.fulfillments.length > 0
+      );
+      
+      console.log('Active funds count:', activeFunds.length);
+      
+      const processedFunds = processFundsData(activeFunds);
+      setFunds(processedFunds);
+      
+      // Update pagination info
+      if (data.pagination) {
+        setPagination(prev => ({
+          ...prev,
+          totalPages: data.pagination.totalPages || 1,
+          totalFunds: data.pagination.totalFunds || 0,
+          hasNext: data.pagination.hasNext || false,
+          hasPrev: data.pagination.hasPrev || false
+        }));
+      }
+    } else {
+      console.error('API returned unsuccessful response:', data);
+      setErrors({ fundSearch: 'Failed to load funds. Please try again.' });
+    }
+    
+  } catch (error) {
+    console.error('Error fetching funds:', error);
+    setErrors({ fundSearch: `Failed to load funds: ${error.message}` });
+  } finally {
+    setFundSearchLoading(false);
+  }
+};
 
   const processFundsData = (rawFunds) => {
     return rawFunds.map(fund => {
@@ -677,27 +699,21 @@ const Explore = ({ onBack, investmentType }) => {
           <div className="flex items-center space-x-3 md:space-x-4">
             <div>
               <h1 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">
-                {investmentType === 'sip' ? 'Start SIP Investment' : 'Make Lumpsum Investment'}
+                Mutual Fund Investments
               </h1>
               <p className="text-xs md:text-sm text-gray-600">
-                Choose from our curated list of top-performing mutual funds
+                Choose from our curated list of top-performing mutual funds for SIP & Lumpsum investments
               </p>
             </div>
           </div>
           
           <div className="flex flex-col space-y-2 md:space-y-3 lg:items-end">
-            {investmentType && (
-              <div className="flex items-center space-x-2 bg-blue-50 px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40">
-                {investmentType === 'sip' ? (
-                  <Calendar className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
-                ) : (
-                  <Banknote className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
-                )}
-                <span className="text-xs md:text-sm font-medium text-blue-600">
-                  {investmentType === 'sip' ? 'SIP Investment' : 'Lumpsum Investment'}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center space-x-2 bg-blue-50 px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40">
+              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />
+              <span className="text-xs md:text-sm font-medium text-blue-600">
+                SIP & Lumpsum Available
+              </span>
+            </div>
             
             {/* Filter Toggle Button */}
             <Button
@@ -762,21 +778,7 @@ const Explore = ({ onBack, investmentType }) => {
                 ))}
               </select>
 
-              {/* AMC Filter */}
-              {amcs.length > 0 && (
-                <select
-                  value={filters.amc}
-                  onChange={(e) => handleFilterChange('amc', e.target.value)}
-                  className="px-3 md:px-4 py-1.5 md:py-2 border border-blue-200/40 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/70 backdrop-blur-sm text-xs md:text-sm"
-                  disabled={fundSearchLoading}
-                >
-                  {amcs.map(amc => (
-                    <option key={amc.id} value={amc.value || amc.id}>
-                      {amc.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+             
 
               {/* Investment Type Filter */}
               <select
@@ -910,7 +912,7 @@ const Explore = ({ onBack, investmentType }) => {
                   <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Investment Types</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-24">Min Amount</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Status</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Action</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-900 w-32">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -954,27 +956,33 @@ const Explore = ({ onBack, investmentType }) => {
                     </td>
                     <td className="p-4 text-sm">
                       <div className="flex items-center space-x-2">
+                        {/* SIP Button */}
                         <Button 
                           size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded-full"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded-full"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase');
+                            handleInvestment(fund, 'sip');
                           }}
                           disabled={fund.status !== 'active'}
                         >
-                          {investmentType === 'sip' ? (
-                            <>
-                              <Calendar className="w-3 h-3 mr-1" />
-                              SIP
-                            </>
-                          ) : (
-                            <>
-                              <Wallet className="w-3 h-3 mr-1" />
-                              Invest
-                            </>
-                          )}
+                          <Calendar className="w-3 h-3 mr-1" />
+                          SIP
                         </Button>
+                        {/* Lumpsum Button */}
+                        <Button 
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInvestment(fund, 'purchase');
+                          }}
+                          disabled={fund.status !== 'active'}
+                        >
+                          <Wallet className="w-3 h-3 mr-1" />
+                          Buy
+                        </Button>
+                        {/* View Details Button */}
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -1051,26 +1059,32 @@ const Explore = ({ onBack, investmentType }) => {
                   </div>
                 </div>
 
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-full"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleInvestment(fund, investmentType === 'sip' ? 'sip' : 'purchase');
-                  }}
-                  disabled={fund.status !== 'active'}
-                >
-                  {investmentType === 'sip' ? (
-                    <>
-                      <Calendar className="w-3 h-3 mr-2" />
-                      Start SIP
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="w-3 h-3 mr-2" />
-                      Invest Now
-                    </>
-                  )}
-                </Button>
+                {/* Investment Buttons */}
+                <div className="flex space-x-2">
+                  <Button 
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInvestment(fund, 'sip');
+                    }}
+                    disabled={fund.status !== 'active'}
+                  >
+                    <Calendar className="w-3 h-3 mr-2" />
+                    Start SIP
+                  </Button>
+                  
+                  <Button 
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded-full"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleInvestment(fund, 'purchase');
+                    }}
+                    disabled={fund.status !== 'active'}
+                  >
+                    <Wallet className="w-3 h-3 mr-2" />
+                    Buy Now
+                  </Button>
+                </div>
               </div>
             ))}
           </div>

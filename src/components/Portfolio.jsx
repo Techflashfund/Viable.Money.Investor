@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { 
   TrendingUp, 
@@ -13,11 +13,38 @@ import {
   PieChart,
   BarChart3,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2,
+  AlertCircle,
+  X,
+  Eye
 } from 'lucide-react';
+import useAuthStore from '@/store/auth';
+import { useRouter } from 'next/navigation';
 
-// Import the external Explore component
-import Explore from './explore';
+// Fund Icon Component
+const FundIcon = ({ fund, size = "w-10 h-10" }) => {
+  const getGradientColors = (name) => {
+    const colors = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-purple-500 to-pink-600',
+      'from-indigo-500 to-blue-600',
+      'from-yellow-500 to-orange-600',
+      'from-red-500 to-pink-600',
+      'from-teal-500 to-green-600'
+    ];
+    const index = name ? name.length % colors.length : 0;
+    return colors[index];
+  };
+
+  return (
+    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.name)} rounded-full flex items-center justify-center flex-shrink-0`}>
+      <div className="w-1/2 h-1/2 bg-white rounded-full opacity-80"></div>
+    </div>
+  );
+};
 
 // Sub Navigation Component for Portfolio
 const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransitioning }) => {
@@ -40,7 +67,7 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
                 key={item.id}
                 onClick={() => handleSubViewClick(item.id)}
                 className={`
-                  flex items-center space-x-2 px-1 py-4 transition-all duration-200 font-medium text-sm whitespace-nowrap relative z-10
+                  flex items-center space-x-2 px-1 py-4 transition-all duration-200 font-medium text-sm whitespace-nowrap relative
                   ${isActive ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'}
                   ${isTransitioning ? 'pointer-events-none' : ''}
                   hover:scale-105
@@ -93,12 +120,67 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
   );
 };
 
-// Mobile Quick Actions Component
-const MobileQuickActions = ({ handleNavigateToExplore }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+// Bottom Quick Actions Component
+const BottomQuickActions = () => {
+  const router = useRouter();
 
   return (
-    <div className="md:hidden bg-blue-50/30 border-t border-blue-200/40">
+    <div className="w-full border-t border-blue-200/40 mt-8 relative z-0">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
+          <p className="text-sm text-gray-600 mt-1">Start your investment journey</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start space-x-4 lg:space-x-5">
+              <div className="w-10 h-10 lg:w-12 lg:h-12 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
+                <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Start New SIP</h4>
+                <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
+                  onClick={() => router.push('/dashboard/explore')}
+                >
+                  Start SIP
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-start space-x-4 lg:space-x-5">
+              <div className="w-10 h-10 lg:w-12 lg:h-12 flex border border-blue-300 rounded-full items-center justify-center flex-shrink-0">
+                <Banknote className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
+                <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
+                  onClick={() => router.push('/dashboard/explore')}
+                >
+                  Invest Now
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Mobile Quick Actions Component
+const MobileQuickActions = () => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const router = useRouter();
+
+  return (
+    <div className="md:hidden bg-blue-50/30 border-t border-blue-200/40 relative z-0">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-3 py-3 flex items-center justify-between text-left"
@@ -122,8 +204,8 @@ const MobileQuickActions = ({ handleNavigateToExplore }) => {
                 <p className="text-xs text-gray-600 mb-2">Begin with ₹500/month</p>
                 <Button 
                   size="sm"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full"
-                  onClick={() => handleNavigateToExplore('sip')}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
+                  onClick={() => router.push('/dashboard/explore')}
                 >
                   Start SIP
                 </Button>
@@ -141,8 +223,8 @@ const MobileQuickActions = ({ handleNavigateToExplore }) => {
                 <p className="text-xs text-gray-600 mb-2">One-time investment</p>
                 <Button 
                   size="sm"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full"
-                  onClick={() => handleNavigateToExplore('lumpsum')}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
+                  onClick={() => router.push('/dashboard/explore')}
                 >
                   Invest Now
                 </Button>
@@ -155,12 +237,123 @@ const MobileQuickActions = ({ handleNavigateToExplore }) => {
   );
 };
 
-// Portfolio Overview Component
-const PortfolioOverview = ({ onNavigateToExplore }) => {
+// Empty Portfolio Component
+const EmptyPortfolio = () => {
+  const router = useRouter();
+
   return (
-    <div className="px-0 py-2 md:p-4 lg:p-8 overflow-x-auto">
-      {/* Portfolio Summary Cards */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-0">
+    <div className="px-4 py-8 md:p-8 lg:p-16 flex flex-col items-center justify-center min-h-[400px] text-center">
+      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-6">
+        <Wallet className="w-8 h-8 text-blue-600" />
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 mb-2">Start Your Investment Journey</h3>
+      <p className="text-gray-600 mb-6 max-w-md">
+        You haven't made any investments yet. Begin building wealth with our curated mutual fund selection.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Button 
+          onClick={() => router.push('/dashboard/explore')}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
+        >
+          Start SIP Investment
+        </Button>
+        <Button 
+          onClick={() => router.push('/dashboard/explore')}
+          variant="outline"
+          className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3"
+        >
+          One-time Investment
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// Portfolio Overview Component with Real Data
+const PortfolioOverview = ({ portfolioData, navData, loading, error, onRefresh }) => {
+  const [expandedHolding, setExpandedHolding] = useState(null);
+  const router = useRouter();
+
+  const toggleExpansion = (folioNumber, holdingIndex) => {
+    const key = `${folioNumber}-${holdingIndex}`;
+    setExpandedHolding(expandedHolding === key ? null : key);
+  };
+
+  // Calculate portfolio metrics
+  const calculatePortfolioMetrics = () => {
+    if (!portfolioData) return { totalValue: 0, totalInvested: 0, totalGain: 0, gainPercentage: 0 };
+
+    let totalValue = 0;
+    let totalInvested = portfolioData.totalInvestment || 0;
+
+    portfolioData.folios?.forEach(folio => {
+      folio.fundHoldings?.forEach(holding => {
+        const navInfo = navData[holding.schemeCode];
+        if (navInfo && navInfo.nav && holding.totalUnits) {
+          totalValue += holding.totalUnits * parseFloat(navInfo.nav);
+        }
+      });
+    });
+
+    const totalGain = totalValue - totalInvested;
+    const gainPercentage = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
+
+    return { totalValue, totalInvested, totalGain, gainPercentage };
+  };
+
+  const { totalValue, totalInvested, totalGain, gainPercentage } = calculatePortfolioMetrics();
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount).replace('₹', '₹');
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading your portfolio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-4" />
+          <p className="text-gray-600 mb-4">Error loading portfolio data</p>
+          <Button onClick={onRefresh} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!portfolioData || portfolioData.totalFunds === 0) {
+    return <EmptyPortfolio />;
+  }
+
+  return (
+    <div className="w-full max-w-full mt-0 lg:mt-3.5">
+      {/* Portfolio Summary Cards - Full Width */}
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-4 lg:mx-8">
         <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Portfolio Overview
         </div>
@@ -173,19 +366,21 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
               <Wallet className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-600" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">₹2,45,680</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">{formatCurrency(totalValue)}</p>
               <p className="text-xs md:text-sm text-gray-600 truncate">Total Portfolio Value</p>
             </div>
           </div>
           
-          {/* Current SIPs */}
+          {/* Total Gained Percentage */}
           <div className="p-3 md:p-4 lg:p-6 relative bg-white lg:bg-transparent rounded-lg lg:rounded-none border lg:border-0 border-blue-200/50">
             <div className="absolute -left-2 md:-left-3 lg:-left-6 top-1/2 transform -translate-y-1/2 w-8 h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 bg-white rounded-full border-2 border-blue-400/50 flex items-center justify-center z-10 shadow-sm">
-              <Target className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
+              <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-green-600" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹8,500</p>
-              <p className="text-xs md:text-sm text-gray-600 truncate">Monthly SIP Amount</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-green-600 truncate">
+                {gainPercentage >= 0 ? '+' : ''}{gainPercentage.toFixed(2)}%
+              </p>
+              <p className="text-xs md:text-sm text-gray-600 truncate">Total Gained</p>
             </div>
           </div>
           
@@ -195,71 +390,15 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
               <IndianRupee className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">₹2,18,450</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{formatCurrency(totalInvested)}</p>
               <p className="text-xs md:text-sm text-gray-600 truncate">Total Invested</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Portfolio Performance Chart */}
-      <div className="mb-4 md:mb-6 lg:mb-8 mx-2 md:mx-0">
-        <div className="p-3 md:p-4 lg:p-6">
-          <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between mb-3 md:mb-4 lg:mb-6">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">Portfolio Performance</h3>
-            <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center lg:space-x-4">
-              <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-blue-500 rounded-full"></div>
-                  <span className="text-xs md:text-sm text-gray-600">Portfolio Value</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 md:w-3 md:h-3 bg-black rounded-full"></div>
-                  <span className="text-xs md:text-sm text-gray-600">Invested Amount</span>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="bg-white/50 hover:bg-white/70 rounded border border-blue-200/40 w-fit text-xs md:text-sm px-2 md:px-3 py-1 md:py-2">6M</Button>
-            </div>
-          </div>
-          
-          <div className="mb-3 md:mb-4">
-            <p className="text-xs md:text-sm text-gray-600">As of today</p>
-            <p className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900">₹2,45,680</p>
-            <p className="text-xs md:text-sm text-green-600">+₹27,230 (+12.5%)</p>
-          </div>
-          
-          {/* Portfolio Chart - Responsive */}
-          <div className="h-40 md:h-48 lg:h-64 w-full bg-gradient-to-r from-blue-50/50 to-black/5 rounded border border-blue-100/50 flex items-center justify-center relative overflow-hidden">
-            <svg className="w-full h-full" viewBox="0 0 600 250" preserveAspectRatio="xMidYMid meet">
-              <defs>
-                <pattern id="portfolioGrid" width="50" height="25" patternUnits="userSpaceOnUse">
-                  <path d="M 50 0 L 0 0 0 25" fill="none" stroke="#E5E7EB" strokeWidth="0.5"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#portfolioGrid)" />
-              
-              {/* Portfolio value line */}
-              <path d="M 50 200 Q 100 190 150 180 Q 200 165 250 150 Q 300 140 350 130 Q 400 125 450 115 Q 500 105 550 95" 
-                    stroke="#2563EB" strokeWidth="3" fill="none"/>
-              {/* Invested amount line */}
-              <path d="M 50 210 Q 100 205 150 200 Q 200 195 250 190 Q 300 185 350 180 Q 400 175 450 170 Q 500 165 550 160" 
-                    stroke="#000000" strokeWidth="3" fill="none"/>
-              
-              {/* Month labels */}
-              <text x="80" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Jun</text>
-              <text x="150" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Jul</text>
-              <text x="220" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Aug</text>
-              <text x="290" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Sep</text>
-              <text x="360" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Oct</text>
-              <text x="430" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Nov</text>
-              <text x="500" y="240" textAnchor="middle" className="fill-gray-500 text-xs">Dec</text>
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      {/* Holdings - Responsive Table */}
-      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow mx-2 md:mx-0">
+      {/* Holdings - Real Data - Full Width */}
+      <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow mx-2 md:mx-4 lg:mx-8">
         <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
           <div className="flex flex-col space-y-3 md:space-y-4 lg:space-y-0 lg:flex-row lg:items-center justify-between">
             <h3 className="text-base md:text-lg font-semibold text-gray-900">Your Holdings</h3>
@@ -278,95 +417,290 @@ const PortfolioOverview = ({ onNavigateToExplore }) => {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-48">Fund Name</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Investment</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Current Value</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">Returns</th>
-                <th className="text-left p-4 text-sm font-medium text-gray-900 min-w-32">SIP Amount</th>
+                <th className="text-left p-4 text-sm font-medium text-gray-900">Fund Name</th>
+                <th className="text-left p-4 text-sm font-medium text-gray-900">Investment</th>
+                <th className="text-left p-4 text-sm font-medium text-gray-900">Current Value</th>
+                <th className="text-left p-4 text-sm font-medium text-gray-900">Returns</th>
+                <th className="text-left p-4 text-sm font-medium text-gray-900">Units</th>
                 <th className="text-left p-4 text-sm font-medium text-gray-900 w-16">Action</th>
               </tr>
             </thead>
             <tbody>
-              {[
-                { name: 'HDFC Equity Fund', category: 'Large Cap • Equity', investment: '₹85,000', current: '₹98,450', returns: '+₹13,450 (+15.8%)', sip: '₹3,000', positive: true },
-                { name: 'SBI Small Cap Fund', category: 'Small Cap • Equity', investment: '₹45,000', current: '₹52,340', returns: '+₹7,340 (+16.3%)', sip: '₹2,000', positive: true },
-                { name: 'ICICI Prudential Bluechip', category: 'Large Cap • Equity', investment: '₹60,000', current: '₹66,780', returns: '+₹6,780 (+11.3%)', sip: '₹2,500', positive: true },
-                { name: 'Axis Debt Fund', category: 'Debt • Medium Duration', investment: '₹28,450', current: '₹28,110', returns: '-₹340 (-1.2%)', sip: '₹1,000', positive: false }
-              ].map((fund, index) => (
-                <tr key={index} className="border-b border-gray-100 hover:bg-white/50 transition-colors">
-                  <td className="p-4 text-sm">
-                    <div>
-                      <p className="font-medium text-gray-900">{fund.name}</p>
-                      <p className="text-gray-500">{fund.category}</p>
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-gray-900">{fund.investment}</td>
-                  <td className="p-4 text-sm text-gray-900">{fund.current}</td>
-                  <td className="p-4 text-sm">
-                    <span className={fund.positive ? 'text-green-600' : 'text-red-600'}>{fund.returns}</span>
-                  </td>
-                  <td className="p-4 text-sm text-gray-900">{fund.sip}</td>
-                  <td className="p-4 text-sm text-gray-900">
-                    <Button variant="ghost" size="sm" className="hover:bg-white/50">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
+              {portfolioData.folios?.map(folio => 
+                folio.fundHoldings?.map((holding, index) => {
+                  const navInfo = navData[holding.schemeCode];
+                  const currentValue = navInfo && navInfo.nav ? holding.totalUnits * parseFloat(navInfo.nav) : holding.totalInvested;
+                  const returns = currentValue - holding.totalInvested;
+                  const returnsPercentage = holding.totalInvested > 0 ? (returns / holding.totalInvested) * 100 : 0;
+                  const key = `${folio.folioNumber}-${index}`;
+                  const isExpanded = expandedHolding === key;
+                  
+                  return (
+                    <React.Fragment key={key}>
+                      <tr className="border-b border-gray-100 hover:bg-white/50 transition-colors">
+                        <td className="p-4 text-sm">
+                          <div className="flex items-center space-x-3">
+                            <FundIcon fund={{ name: navInfo?.scheme_name || `Scheme ${holding.schemeCode}` }} size="w-8 h-8" />
+                            <div className="min-w-0">
+                              <div className="font-medium text-gray-900">
+                                {navInfo?.scheme_name || `Scheme ${holding.schemeCode}`}
+                              </div>
+                              <p className="text-gray-500 text-xs">
+                                {navInfo?.fund_house || ''} • Folio: {folio.folioNumber}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm text-gray-900">{formatCurrency(holding.totalInvested)}</td>
+                        <td className="p-4 text-sm text-gray-900">{formatCurrency(currentValue)}</td>
+                        <td className="p-4 text-sm">
+                          <span className={returns >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {returns >= 0 ? '+' : ''}{formatCurrency(returns)} ({returnsPercentage >= 0 ? '+' : ''}{returnsPercentage.toFixed(2)}%)
+                          </span>
+                        </td>
+                        <td className="p-4 text-sm text-gray-900">{holding.totalUnits.toFixed(3)}</td>
+                        <td className="p-4 text-sm text-gray-900">
+                          <div className="flex items-center space-x-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="hover:bg-blue-50 p-1"
+                              onClick={() => toggleExpansion(folio.folioNumber, index)}
+                            >
+                              {isExpanded ? <ChevronUp className="w-4 h-4 text-blue-600" /> : <ChevronDown className="w-4 h-4 text-blue-600" />}
+                            </Button>
+                            <Button variant="ghost" size="sm" className="hover:bg-white/50 p-1">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      {/* Expanded Transaction History */}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan="6" className="px-4 py-0">
+                            <div className=" rounded-lg p-4 mb-2">
+                              <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                                Transaction History ({holding.transactions?.length || 0} transactions)
+                              </h4>
+                              
+                              {holding.transactions && holding.transactions.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full border border-gray-200 rounded-lg bg-white">
+                                    <thead className="bg-gray-100">
+                                      <tr>
+                                        <th className="text-left p-3 text-xs font-medium text-gray-700">Date</th>
+                                        <th className="text-left p-3 text-xs font-medium text-gray-700">Amount</th>
+                                        <th className="text-left p-3 text-xs font-medium text-gray-700">NAV</th>
+                                        <th className="text-left p-3 text-xs font-medium text-gray-700">Units</th>
+                                        <th className="text-left p-3 text-xs font-medium text-gray-700">Type</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {holding.transactions.map((transaction, txIndex) => (
+                                        <tr key={txIndex} className="border-b border-gray-100 last:border-b-0">
+                                          <td className="p-3 text-xs text-gray-900">
+                                            {formatDate(transaction.date)}
+                                          </td>
+                                          <td className="p-3 text-xs text-gray-900">
+                                            {formatCurrency(transaction.purchaseAmount)}
+                                          </td>
+                                          <td className="p-3 text-xs text-gray-900">
+                                            ₹{transaction.nav.toFixed(3)}
+                                          </td>
+                                          <td className="p-3 text-xs text-gray-900">
+                                            {transaction.units.toFixed(3)}
+                                          </td>
+                                          <td className="p-3 text-xs">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                              Purchase
+                                            </span>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-gray-500 text-sm">
+                                  No transactions found
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Mobile Cards */}
         <div className="lg:hidden divide-y divide-gray-100">
-          {[
-            { name: 'HDFC Equity Fund', category: 'Large Cap • Equity', investment: '₹85,000', current: '₹98,450', returns: '+₹13,450 (+15.8%)', sip: '₹3,000', positive: true },
-            { name: 'SBI Small Cap Fund', category: 'Small Cap • Equity', investment: '₹45,000', current: '₹52,340', returns: '+₹7,340 (+16.3%)', sip: '₹2,000', positive: true },
-            { name: 'ICICI Prudential Bluechip', category: 'Large Cap • Equity', investment: '₹60,000', current: '₹66,780', returns: '+₹6,780 (+11.3%)', sip: '₹2,500', positive: true },
-            { name: 'Axis Debt Fund', category: 'Debt • Medium Duration', investment: '₹28,450', current: '₹28,110', returns: '-₹340 (-1.2%)', sip: '₹1,000', positive: false }
-          ].map((fund, index) => (
-            <div key={index} className="p-3 md:p-4 hover:bg-white/50 transition-colors">
-              <div className="flex items-center justify-between mb-2 md:mb-3">
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-sm md:font-medium text-gray-900 truncate">{fund.name}</h4>
-                  <p className="text-xs md:text-sm text-gray-500">{fund.category}</p>
+          {portfolioData.folios?.map(folio => 
+            folio.fundHoldings?.map((holding, index) => {
+              const navInfo = navData[holding.schemeCode];
+              const currentValue = navInfo && navInfo.nav ? holding.totalUnits * parseFloat(navInfo.nav) : holding.totalInvested;
+              const returns = currentValue - holding.totalInvested;
+              const returnsPercentage = holding.totalInvested > 0 ? (returns / holding.totalInvested) * 100 : 0;
+              const key = `${folio.folioNumber}-${index}`;
+              const isExpanded = expandedHolding === key;
+              
+              return (
+                <div key={key} className="hover:bg-white/50 transition-colors">
+                  <div className="p-3 md:p-4">
+                    <div className="flex items-center justify-between mb-2 md:mb-3">
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <FundIcon fund={{ name: navInfo?.scheme_name || `Scheme ${holding.schemeCode}` }} size="w-8 h-8 md:w-10 md:h-10" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm md:font-medium text-gray-900 truncate">
+                            {navInfo?.scheme_name || `Scheme ${holding.schemeCode}`}
+                          </div>
+                          <p className="text-xs md:text-sm text-gray-500">
+                            {navInfo?.fund_house || ''} • Folio: {folio.folioNumber}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 ml-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="hover:bg-blue-50 p-1 md:p-2"
+                          onClick={() => toggleExpansion(folio.folioNumber, index)}
+                        >
+                          {isExpanded ? <ChevronUp className="w-3 h-3 md:w-4 md:h-4 text-blue-600" /> : <ChevronDown className="w-3 h-3 md:w-4 md:h-4 text-blue-600" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="hover:bg-white/50 p-1 md:p-2">
+                          <MoreHorizontal className="w-3 h-3 md:w-4 md:h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 md:gap-4 text-xs md:text-sm">
+                      <div>
+                        <p className="text-gray-500">Investment</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(holding.totalInvested)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Current Value</p>
+                        <p className="font-medium text-gray-900">{formatCurrency(currentValue)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Returns</p>
+                        <p className={`font-medium ${returns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {returns >= 0 ? '+' : ''}{formatCurrency(returns)} ({returnsPercentage >= 0 ? '+' : ''}{returnsPercentage.toFixed(2)}%)
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Units</p>
+                        <p className="font-medium text-gray-900">{holding.totalUnits.toFixed(3)}</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Expanded Transaction History for Mobile */}
+                  {isExpanded && (
+                    <div className="px-3 pb-3 md:px-4 md:pb-4">
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-3">
+                          Transaction History ({holding.transactions?.length || 0})
+                        </h4>
+                        
+                        {holding.transactions && holding.transactions.length > 0 ? (
+                          <div className="space-y-2">
+                            {holding.transactions.map((transaction, txIndex) => (
+                              <div key={txIndex} className="bg-white rounded-lg p-3 border border-gray-200">
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <p className="text-gray-500">Date</p>
+                                    <p className="font-medium text-gray-900">{formatDate(transaction.date)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">Amount</p>
+                                    <p className="font-medium text-gray-900">{formatCurrency(transaction.purchaseAmount)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">NAV</p>
+                                    <p className="font-medium text-gray-900">₹{transaction.nav.toFixed(3)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-gray-500">Units</p>
+                                    <p className="font-medium text-gray-900">{transaction.units.toFixed(3)}</p>
+                                  </div>
+                                </div>
+                                <div className="mt-2">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Purchase
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-4 text-gray-500 text-sm">
+                            No transactions found
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" className="hover:bg-white/50 ml-2 p-1 md:p-2">
-                  <MoreHorizontal className="w-3 h-3 md:w-4 md:h-4" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-2 gap-2 md:gap-4 text-xs md:text-sm">
-                <div>
-                  <p className="text-gray-500">Investment</p>
-                  <p className="font-medium text-gray-900">{fund.investment}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Current Value</p>
-                  <p className="font-medium text-gray-900">{fund.current}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Returns</p>
-                  <p className={`font-medium ${fund.positive ? 'text-green-600' : 'text-red-600'}`}>{fund.returns}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">SIP Amount</p>
-                  <p className="font-medium text-gray-900">{fund.sip}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+              );
+            })
+          )}
         </div>
       </div>
     </div>
   );
 };
 
-// Portfolio Analytics Component
-const PortfolioAnalytics = () => {
+// Portfolio Analytics Component with Real Data
+const PortfolioAnalytics = ({ portfolioData, navData, loading }) => {
+  // Calculate analytics metrics
+  const calculateAnalytics = () => {
+    if (!portfolioData) return { xirr: 0, volatility: 0, sharpeRatio: 0, maxDrawdown: 0 };
+
+    // Mock calculations for now - you can implement proper XIRR and other calculations
+    return {
+      xirr: 15.2,
+      volatility: 8.4,
+      sharpeRatio: 1.82,
+      maxDrawdown: -8.5
+    };
+  };
+
+  const { xirr, volatility, sharpeRatio, maxDrawdown } = calculateAnalytics();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!portfolioData || portfolioData.totalFunds === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">No Analytics Available</h3>
+          <p className="text-gray-500">Start investing to see your portfolio analytics</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="px-0 py-2 md:p-4 lg:p-8 overflow-x-auto">
-      {/* Performance Metrics */}
-      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-0">
+    <div className="w-full max-w-full mt-0 lg:mt-3.5">
+      {/* Performance Metrics - Full Width */}
+      <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-4 lg:mx-8">
         <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
           Performance Metrics
         </div>
@@ -377,7 +711,7 @@ const PortfolioAnalytics = () => {
               <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-blue-600" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">15.2%</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-blue-600 truncate">{xirr}%</p>
               <p className="text-xs md:text-sm text-gray-600 truncate">Annual Returns (XIRR)</p>
             </div>
           </div>
@@ -387,7 +721,7 @@ const PortfolioAnalytics = () => {
               <BarChart3 className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">8.4%</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{volatility}%</p>
               <p className="text-xs md:text-sm text-gray-600 truncate">Portfolio Volatility</p>
             </div>
           </div>
@@ -397,7 +731,7 @@ const PortfolioAnalytics = () => {
               <Target className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-black" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">1.82</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{sharpeRatio}</p>
               <p className="text-xs md:text-sm text-gray-600 truncate">Sharpe Ratio</p>
             </div>
           </div>
@@ -407,15 +741,15 @@ const PortfolioAnalytics = () => {
               <TrendingUp className="w-4 h-4 md:w-5 md:h-5 lg:w-6 lg:h-6 text-orange-600 transform rotate-180" />
             </div>
             <div className="pl-4 md:pl-6 lg:pl-8">
-              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">-8.5%</p>
+              <p className="text-lg md:text-xl lg:text-2xl font-medium font-sans text-gray-900 truncate">{maxDrawdown}%</p>
               <p className="text-xs md:text-sm text-gray-600 truncate">Max Drawdown</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Asset Allocation */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mx-2 md:mx-0">
+      {/* Asset Allocation and Top Holdings - Full Width */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 lg:gap-6 mx-2 md:mx-4 lg:mx-8">
         <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
           <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
             <h3 className="text-base md:text-lg font-semibold text-gray-900">Asset Allocation</h3>
@@ -427,32 +761,10 @@ const PortfolioAnalytics = () => {
                   <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-blue-500 rounded-full flex-shrink-0"></div>
                   <span className="text-xs md:text-sm text-gray-700">Equity Funds</span>
                 </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900">75%</span>
+                <span className="text-xs md:text-sm font-medium text-gray-900">100%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
-                <div className="bg-blue-500 h-1.5 md:h-2 rounded-full" style={{ width: '75%' }}></div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 md:space-x-3">
-                  <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-black rounded-full flex-shrink-0"></div>
-                  <span className="text-xs md:text-sm text-gray-700">Debt Funds</span>
-                </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900">20%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
-                <div className="bg-black h-1.5 md:h-2 rounded-full" style={{ width: '20%' }}></div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 md:space-x-3">
-                  <div className="w-2 h-2 md:w-3 md:h-3 lg:w-4 lg:h-4 bg-yellow-500 rounded-full flex-shrink-0"></div>
-                  <span className="text-xs md:text-sm text-gray-700">Gold ETF</span>
-                </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900">5%</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 md:h-2">
-                <div className="bg-yellow-500 h-1.5 md:h-2 rounded-full" style={{ width: '5%' }}></div>
+                <div className="bg-blue-500 h-1.5 md:h-2 rounded-full" style={{ width: '100%' }}></div>
               </div>
             </div>
           </div>
@@ -460,38 +772,23 @@ const PortfolioAnalytics = () => {
 
         <div className="backdrop-blur-sm border border-blue-200/40 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
           <div className="p-3 md:p-4 lg:p-6 border-b border-blue-100/40">
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">Top Holdings</h3>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">Holdings</h3>
           </div>
           <div className="p-3 md:p-4 lg:p-6">
             <div className="space-y-3 md:space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-3 md:mr-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">HDFC Equity Fund</p>
-                  <p className="text-xs text-gray-500">Large Cap</p>
+              {portfolioData.folios?.slice(0, 4).map((folio, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0 mr-3 md:mr-4">
+                    <p className="text-xs md:text-sm font-medium text-gray-900 truncate">
+                      Folio {folio.folioNumber}
+                    </p>
+                    <p className="text-xs text-gray-500">{folio.fundHoldings?.length || 0} holdings</p>
+                  </div>
+                  <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">
+                    {((folio.totalFolioValue / portfolioData.totalInvestment) * 100).toFixed(1)}%
+                  </span>
                 </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">40.1%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-3 md:mr-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">SBI Small Cap Fund</p>
-                  <p className="text-xs text-gray-500">Small Cap</p>
-                </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">21.3%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-3 md:mr-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">ICICI Prudential Bluechip</p>
-                  <p className="text-xs text-gray-500">Large Cap</p>
-                </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">27.2%</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0 mr-3 md:mr-4">
-                  <p className="text-xs md:text-sm font-medium text-gray-900 truncate">Axis Debt Fund</p>
-                  <p className="text-xs text-gray-500">Debt</p>
-                </div>
-                <span className="text-xs md:text-sm font-medium text-gray-900 flex-shrink-0">11.4%</span>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -500,12 +797,18 @@ const PortfolioAnalytics = () => {
   );
 };
 
-// Main Portfolio Component with Sub-Navigation
+// Main Portfolio Component with API Integration
 const Portfolio = () => {
-  const [activeView, setActiveView] = useState('portfolio'); // 'portfolio' or 'explore'
+  const [activeView, setActiveView] = useState('portfolio');
   const [activeSubView, setActiveSubView] = useState('overview');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [investmentType, setInvestmentType] = useState(null); // 'sip' or 'lumpsum'
+  const [portfolioData, setPortfolioData] = useState(null);
+  const [navData, setNavData] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const router = useRouter();
+
+  const { user, getAuthHeaders } = useAuthStore();
 
   const subMenuItems = useMemo(() => [
     {
@@ -520,31 +823,123 @@ const Portfolio = () => {
     }
   ], []);
 
+  // Fetch portfolio data
+  const fetchPortfolioData = useCallback(async () => {
+    if (!user?.userId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(
+        `https://viable-money-be.onrender.com/api/portfolio/${user.userId}`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders()
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch portfolio: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setPortfolioData(result.data);
+        
+        // Fetch NAV data for all scheme codes
+        const schemeCodes = [];
+        result.data.folios?.forEach(folio => {
+          folio.fundHoldings?.forEach(holding => {
+            if (!schemeCodes.includes(holding.schemeCode)) {
+              schemeCodes.push(holding.schemeCode);
+            }
+          });
+        });
+
+        // Fetch NAV data and metadata for each scheme
+        const navPromises = schemeCodes.map(async (schemeCode) => {
+          try {
+            const navResponse = await fetch(`https://api.mfapi.in/mf/${schemeCode}/latest`);
+            const navResult = await navResponse.json();
+            
+            if (navResult.status === 'SUCCESS' && navResult.data?.[0]?.nav) {
+              return [schemeCode, {
+                nav: navResult.data[0].nav,
+                scheme_name: navResult.meta?.scheme_name || `Scheme ${schemeCode}`,
+                fund_house: navResult.meta?.fund_house || '',
+                scheme_category: navResult.meta?.scheme_category || '',
+                scheme_type: navResult.meta?.scheme_type || ''
+              }];
+            }
+            return [schemeCode, null];
+          } catch (error) {
+            console.error(`Error fetching NAV for scheme ${schemeCode}:`, error);
+            return [schemeCode, null];
+          }
+        });
+
+        const navResults = await Promise.all(navPromises);
+        const navMap = Object.fromEntries(navResults);
+        setNavData(navMap);
+      }
+    } catch (error) {
+      console.error('Error fetching portfolio data:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.userId, getAuthHeaders]);
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchPortfolioData();
+  }, [fetchPortfolioData]);
+
   const handleSubViewChange = useCallback((subView) => {
     setIsTransitioning(true);
     setActiveSubView(subView);
     setTimeout(() => setIsTransitioning(false), 300);
   }, []);
 
-  const handleNavigateToExplore = useCallback((type) => {
-    setInvestmentType(type);
-    setActiveView('explore');
-  }, []);
-
-  const handleBackToPortfolio = useCallback(() => {
-    setActiveView('portfolio');
-    setInvestmentType(null);
-  }, []);
+  const handleRefresh = useCallback(() => {
+    fetchPortfolioData();
+  }, [fetchPortfolioData]);
 
   const renderSubContent = useCallback(() => {
     const content = (() => {
       switch (activeSubView) {
         case 'overview':
-          return <PortfolioOverview onNavigateToExplore={handleNavigateToExplore} />;
+          return (
+            <PortfolioOverview 
+              portfolioData={portfolioData}
+              navData={navData}
+              loading={loading}
+              error={error}
+              onRefresh={handleRefresh}
+            />
+          );
         case 'analytics':
-          return <PortfolioAnalytics />;
+          return (
+            <PortfolioAnalytics 
+              portfolioData={portfolioData}
+              navData={navData}
+              loading={loading}
+            />
+          );
         default:
-          return <PortfolioOverview onNavigateToExplore={handleNavigateToExplore} />;
+          return (
+            <PortfolioOverview 
+              portfolioData={portfolioData}
+              navData={navData}
+              loading={loading}
+              error={error}
+              onRefresh={handleRefresh}
+            />
+          );
       }
     })();
 
@@ -553,13 +948,20 @@ const Portfolio = () => {
         {content}
       </div>
     );
-  }, [activeSubView, isTransitioning, handleNavigateToExplore]);
+  }, [activeSubView, isTransitioning, portfolioData, navData, loading, error, handleRefresh]);
 
-  // Render Explore component if activeView is 'explore'
-  if (activeView === 'explore') {
-    return (
-      <div className="space-y-0 w-full">
-        <div className="min-h-[600px] relative overflow-hidden">
+  return (
+    <div className="w-full">
+      {/* Full Width Layout */}
+      <div className="space-y-0 md:space-y-6 w-full">
+        <SubNavigation 
+          activeSubView={activeSubView}
+          setActiveSubView={handleSubViewChange}
+          subMenuItems={subMenuItems}
+          isTransitioning={isTransitioning}
+        />
+        
+        <div className="relative overflow-hidden">
           <div className="absolute inset-0 opacity-5">
             <div className="absolute inset-0" style={{
               backgroundImage: `radial-gradient(circle at 1px 1px, rgb(37 99 235) 1px, transparent 0)`,
@@ -568,103 +970,20 @@ const Portfolio = () => {
           </div>
           
           <div className="relative z-10">
-            <Explore onBack={handleBackToPortfolio} investmentType={investmentType} />
+            {renderSubContent()}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Render Portfolio component (default)
-  return (
-    <div className="flex gap-0 lg:gap-8 min-h-screen w-full">
-      {/* Left Side - Portfolio Section */}
-      <div className="flex-1 transition-all duration-300 ease-in-out">
-        <div className="space-y-0 md:space-y-6 w-full">
-          <SubNavigation 
-            activeSubView={activeSubView}
-            setActiveSubView={handleSubViewChange}
-            subMenuItems={subMenuItems}
-            isTransitioning={isTransitioning}
-          />
           
-          <div className="min-h-[600px] relative overflow-hidden">
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute inset-0" style={{
-                backgroundImage: `radial-gradient(circle at 1px 1px, rgb(37 99 235) 1px, transparent 0)`,
-                backgroundSize: '20px 20px'
-              }}></div>
+          {isTransitioning && (
+            <div className="absolute top-2 md:top-4 right-2 md:right-4 z-20">
+              <div className="w-4 h-4 md:w-6 md:h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
             </div>
-            
-            <div className="relative z-10">
-              {renderSubContent()}
-            </div>
-            
-            {isTransitioning && (
-              <div className="absolute top-2 md:top-4 right-2 md:right-4 z-20">
-                <div className="w-4 h-4 md:w-6 md:h-6 border-2 border-blue-200 border-t-blue-500 rounded-full animate-spin"></div>
-              </div>
-            )}
-          </div>
-
+          )}
+          
           {/* Mobile Quick Actions */}
-          <MobileQuickActions handleNavigateToExplore={handleNavigateToExplore} />
-        </div>
-      </div>
-      
-      {/* Separator - Full Height */}
-      <div className="w-px bg-gray-200 flex-shrink-0 hidden lg:block"></div>
-      
-      {/* Right Side - Quick Actions Section (Desktop Only) */}
-      <div className="w-[28rem] transition-all duration-300 ease-in-out hidden lg:block">
-        <div className="sticky top-0 h-screen overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8">
-            {/* Quick Actions Heading */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
-              <p className="text-sm text-gray-600 mt-1">Start your investment journey</p>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Start SIP */}
-              <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start space-x-4 lg:space-x-5">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Start New SIP</h4>
-                    <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
-                    <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
-                      onClick={() => handleNavigateToExplore('sip')}
-                    >
-                      Start SIP
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          <MobileQuickActions />
 
-              {/* Lumpsum Investment */}
-              <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-start space-x-4 lg:space-x-5">
-                  <div className="w-10 h-10 lg:w-12 lg:h-12 flex border border-blue-300 rounded-full items-center justify-center flex-shrink-0">
-                    <Banknote className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
-                    <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
-                    <Button 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors"
-                      onClick={() => handleNavigateToExplore('lumpsum')}
-                    >
-                      Invest Now
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Bottom Quick Actions for Desktop */}
+          <BottomQuickActions />
         </div>
       </div>
     </div>

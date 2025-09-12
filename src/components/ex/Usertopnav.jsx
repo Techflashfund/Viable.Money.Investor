@@ -15,7 +15,9 @@ import {
   LogOut,
   HelpCircle,
   AlertTriangle,
-  X
+  X,
+  Search,
+  Loader2
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -24,10 +26,60 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+// FundIcon component
+const FundIcon = ({ fund, size = "w-10 h-10" }) => {
+  const getGradientColors = (name) => {
+    const colors = [
+      'from-blue-500 to-purple-600',
+      'from-green-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-purple-500 to-pink-600',
+      'from-indigo-500 to-blue-600',
+      'from-yellow-500 to-orange-600',
+      'from-red-500 to-pink-600',
+      'from-teal-500 to-green-600'
+    ];
+    const index = name ? name.length % colors.length : 0;
+    return colors[index];
+  };
+
+  return (
+    <div className={`${size} bg-gradient-to-br ${getGradientColors(fund?.fundName)} rounded-full flex items-center justify-center flex-shrink-0`}>
+      <div className="w-1/2 h-1/2 bg-white rounded-full opacity-80"></div>
+    </div>
+  );
+};
+
+// Helper function to convert to camelCase
+const toCamelCase = (str) => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map((word, index) => index === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+};
+
+// Helper function to convert to Title Case
+const toTitleCase = (str) => {
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const UserTopNav = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  
   const navRef = useRef(null);
+  const searchRef = useRef(null);
+  const resultsRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
   
@@ -36,6 +88,21 @@ const UserTopNav = () => {
     console.log('Pathname changed to:', pathname);
     setIsTransitioning(false); // Ensure transition state is cleared
   }, [pathname]);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target) &&
+          resultsRef.current && !resultsRef.current.contains(event.target)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   
   // Get user data from auth store
   const { user, onboardingstatus, clearAuth } = useAuthStore();
@@ -55,18 +122,13 @@ const UserTopNav = () => {
     return { email, name, initial, shortName };
   }, [user]);
 
+  // Updated menuItems without investments
   const menuItems = useMemo(() => [
     {
       id: 'portfolio',
       name: 'Portfolio',
       icon: <PieChart className="w-4 h-4 flex-shrink-0" />,
       href: '/dashboard/portfolio'
-    },
-    {
-      id: 'investments',
-      name: 'Investments',
-      icon: <TrendingUp className="w-4 h-4 flex-shrink-0" />,
-      href: '/dashboard/investments'
     },
     {
       id: 'transactions',
@@ -81,6 +143,53 @@ const UserTopNav = () => {
       href: '/dashboard/goals'
     }
   ], []);
+
+  // Search API function
+  const searchFunds = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setSearchError('');
+    
+    try {
+      const response = await fetch(`https://investment.flashfund.in/api/ondc/funds/search?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setSearchResults(data.data || []);
+        setShowResults(true);
+      } else {
+        setSearchError('Failed to search funds');
+        setSearchResults([]);
+        setShowResults(false);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchError('Something went wrong. Please try again.');
+      setSearchResults([]);
+      setShowResults(false);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Debounced search
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchQuery) {
+        searchFunds(searchQuery);
+      } else {
+        setShowResults(false);
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, searchFunds]);
 
   const handleItemClick = useCallback((item) => {
     if (pathname !== item.href) {
@@ -103,10 +212,22 @@ const UserTopNav = () => {
     setShowOnboardingBanner(false);
   }, []);
 
+  const handleSearchSubmit = useCallback((e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      searchFunds(searchQuery);
+    }
+  }, [searchQuery, searchFunds]);
+
+  const handleFundClick = useCallback((fund) => {
+    setShowResults(false);
+    setSearchQuery('');
+    router.push(`/dashboard/explore/${fund.itemId}`);
+  }, [router]);
+
   // Determine active view based on pathname - memoized for reactivity
   const activeView = useMemo(() => {
     console.log('Current pathname:', pathname); // Debug log
-    if (pathname === '/dashboard/investments' || pathname.startsWith('/dashboard/investments/')) return 'investments';
     if (pathname === '/dashboard/transactions' || pathname.startsWith('/dashboard/transactions/')) return 'transactions';
     if (pathname === '/dashboard/goals' || pathname.startsWith('/dashboard/goals/')) return 'goals';
     if (pathname === '/dashboard/portfolio' || pathname.startsWith('/dashboard/portfolio/') || pathname === '/dashboard' || pathname === '/') return 'portfolio';
@@ -187,31 +308,99 @@ const UserTopNav = () => {
                 />
               </div>
 
-              {/* Main Navigation */}
-              <nav ref={navRef} className="relative">
-                <div className="flex items-center gap-8 px-2 py-1">
-                  {menuItems.map((item, index) => {
-                    const isActive = activeView === item.id;
-                    return (
-                      <div 
-                        key={item.id}
-                        className={`
-                          flex items-center space-x-2 cursor-pointer transition-all duration-300 py-2 px-3 relative
-                          ${isActive ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}
-                          ${isTransitioning ? 'pointer-events-none' : ''}
-                        `}
-                        style={{ minWidth: '110px', justifyContent: 'center' }}
-                        onClick={() => handleItemClick(item)}
-                      >
-                        <div className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110' : 'hover:scale-105'}`}>
-                          {item.icon}
+              {/* Navigation and Search Container - moved left */}
+              <div className="flex items-center space-x-8 flex-1 justify-start ml-16">
+                {/* Main Navigation */}
+                <nav ref={navRef} className="relative">
+                  <div className="flex items-center gap-8 px-2 py-1">
+                    {menuItems.map((item, index) => {
+                      const isActive = activeView === item.id;
+                      return (
+                        <div 
+                          key={item.id}
+                          className={`
+                            flex items-center space-x-2 cursor-pointer transition-all duration-300 py-2 px-3 relative
+                            ${isActive ? 'text-blue-600' : 'text-gray-500 hover:text-blue-600'}
+                            ${isTransitioning ? 'pointer-events-none' : ''}
+                          `}
+                          style={{ minWidth: '110px', justifyContent: 'center' }}
+                          onClick={() => handleItemClick(item)}
+                        >
+                          <div className={`flex-shrink-0 transition-all duration-300 ${isActive ? 'scale-110' : 'hover:scale-105'}`}>
+                            {item.icon}
+                          </div>
+                          <span className="font-medium text-sm whitespace-nowrap">{item.name}</span>
                         </div>
-                        <span className="font-medium text-sm whitespace-nowrap">{item.name}</span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                </nav>
+
+                {/* Search Bar with Results */}
+                <div className="relative" ref={searchRef}>
+                  <form onSubmit={handleSearchSubmit} className="relative">
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      {isSearching && (
+                        <Loader2 className="w-4 h-4 absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 animate-spin" />
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search funds, transactions..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm placeholder-gray-500"
+                      />
+                    </div>
+                  </form>
+
+                  {/* Search Results Dropdown */}
+                  {showResults && (
+                    <div 
+                      ref={resultsRef}
+                      className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto"
+                    >
+                      {searchError ? (
+                        <div className="p-4 text-center text-red-500 text-sm">
+                          {searchError}
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        <div className="py-2">
+                          <div className="px-3 py-2 text-xs text-gray-500 font-medium border-b">
+                            {searchResults.length} fund{searchResults.length > 1 ? 's' : ''} found
+                          </div>
+                          {searchResults.map((fund) => (
+                            <div
+                              key={fund._id}
+                              onClick={() => handleFundClick(fund)}
+                              className="flex items-center space-x-3 px-3 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                            >
+                              <FundIcon fund={fund} size="w-10 h-10" />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium text-gray-900 truncate">
+                                  {toTitleCase(fund.fundName)}
+                                </h4>
+                                <div className="flex items-center space-x-4 mt-1">
+                                  <p className="text-xs text-gray-500">
+                                    Min: ₹{fund.minSipAmount || fund.minLumpsumAmount}
+                                  </p>
+                                  <p className="text-xs text-blue-600">
+                                    {toTitleCase(fund.primaryCategory.replace(/_/g, ' '))}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : searchQuery && !isSearching ? (
+                        <div className="p-4 text-center text-gray-500 text-sm">
+                          No funds found for "{searchQuery}"
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
-              </nav>
+              </div>
 
               {/* Right Side Actions */}
               <div className="flex items-center space-x-3">
@@ -252,7 +441,7 @@ const UserTopNav = () => {
             </div>
           </div>
           
-          {/* Desktop Moving Underline at Bottom Border */}
+          {/* Desktop Moving Underline at Bottom Border - adjusted for 3 items */}
           <div 
             className={`
               absolute bottom-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full
@@ -260,7 +449,7 @@ const UserTopNav = () => {
               ${isTransitioning ? 'opacity-70' : 'opacity-100'}
             `}
             style={{
-              left: `calc(50% + ${(menuItems.findIndex(item => item.id === activeView) - 1.5) * 166}px - 50px)`,
+              left: `calc(50% + ${(menuItems.findIndex(item => item.id === activeView) - 1) * 166 - 166}px - 50px)`,
               width: '110px',
               transform: isTransitioning ? 'scaleX(0.8)' : 'scaleX(1)'
             }}
@@ -277,11 +466,74 @@ const UserTopNav = () => {
                   alt="Viable.Money Logo" 
                   className="w-28 h-9 object-contain"
                 />
-                
               </div>
 
+              {/* Mobile Search and User Actions */}
               <div className="flex items-center space-x-2">
-                
+                {/* Mobile Search */}
+                <div className="relative" ref={searchRef}>
+                  <form onSubmit={handleSearchSubmit} className="relative">
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      {isSearching && (
+                        <Loader2 className="w-4 h-4 absolute right-2.5 top-1/2 transform -translate-y-1/2 text-blue-500 animate-spin" />
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Search..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-32 sm:w-40 pl-8 pr-8 py-1.5 border border-gray-300 rounded-lg bg-white/50 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm placeholder-gray-400"
+                      />
+                    </div>
+                  </form>
+
+                  {/* Mobile Search Results Dropdown */}
+                  {showResults && (
+                    <div 
+                      ref={resultsRef}
+                      className="absolute top-full right-0 mt-1 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-80 overflow-y-auto"
+                    >
+                      {searchError ? (
+                        <div className="p-4 text-center text-red-500 text-sm">
+                          {searchError}
+                        </div>
+                      ) : searchResults.length > 0 ? (
+                        <div className="py-2">
+                          <div className="px-3 py-2 text-xs text-gray-500 font-medium border-b">
+                            {searchResults.length} fund{searchResults.length > 1 ? 's' : ''} found
+                          </div>
+                          {searchResults.map((fund) => (
+                            <div
+                              key={fund._id}
+                              onClick={() => handleFundClick(fund)}
+                              className="flex items-center space-x-3 px-3 py-3 hover:bg-gray-50 cursor-pointer transition-colors duration-150"
+                            >
+                              <FundIcon fund={fund} size="w-8 h-8" />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="text-sm font-medium text-gray-900 line-clamp-2">
+                                  {toTitleCase(fund.fundName)}
+                                </h4>
+                                <div className="flex items-center space-x-3 mt-1">
+                                  <p className="text-xs text-gray-500">
+                                    Min: ₹{fund.minSipAmount || fund.minLumpsumAmount}
+                                  </p>
+                                  <p className="text-xs text-blue-600 truncate">
+                                    {toTitleCase(fund.primaryCategory.replace(/_/g, ' '))}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : searchQuery && !isSearching ? (
+                        <div className="p-4 text-center text-gray-500 text-sm">
+                          No funds found for "{searchQuery}"
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -324,7 +576,7 @@ const UserTopNav = () => {
           <div className="border-t border-gray-200 bg-white/80 backdrop-blur-sm relative">
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
               <div className="py-1">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {menuItems.map((item) => {
                     const isActive = activeView === item.id;
                     return (
@@ -347,7 +599,7 @@ const UserTopNav = () => {
               </div>
             </div>
             
-            {/* Mobile Moving Underline at Bottom Border */}
+            {/* Mobile Moving Underline at Bottom Border - updated for 3 items */}
             <div 
               className={`
                 absolute bottom-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full
@@ -355,8 +607,8 @@ const UserTopNav = () => {
                 ${isTransitioning ? 'opacity-70' : 'opacity-100'}
               `}
               style={{
-                left: `${(menuItems.findIndex(item => item.id === activeView) * 25) + 5}%`,
-                width: '15%',
+                left: `${(menuItems.findIndex(item => item.id === activeView) * 33.33) + 8.33}%`,
+                width: '16.67%',
                 transform: isTransitioning ? 'scaleX(0.8)' : 'scaleX(1)'
               }}
             />

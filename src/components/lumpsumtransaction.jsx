@@ -282,10 +282,11 @@ const PaymentInitiationComponent = ({
   loading,
   errors 
 }) => {
-  // Filter out payment methods with null auth
-  const filteredPaymentMethods = paymentMethodsData?.paymentMethods?.filter(paymentMethod => 
-    paymentMethod.methods?.[0]?.auth !== "cc" && paymentMethod.methods?.[0]?.auth !== "ccc"
-  ) || [];
+  // Filter out payment methods with null auth (cc and ccc)
+  const filteredPaymentMethods = paymentMethodsData?.paymentMethods?.filter(paymentMethod => {
+    const method = paymentMethod.availableMethods?.[0] || paymentMethod.methods?.[0];
+    return method?.auth !== "cc" && method?.auth !== "ccc";
+  }) || [];
 
   return (
     <div className="space-y-4">
@@ -302,8 +303,8 @@ const PaymentInitiationComponent = ({
       <div className="space-y-3">
         {filteredPaymentMethods.length > 0 ? (
           filteredPaymentMethods.map((paymentMethod, index) => {
-            const method = paymentMethod.methods?.[0] || {};
-            const methodKey = paymentMethod.paymentId || paymentMethod._id || `method-${index}`;
+            const method = paymentMethod.availableMethods?.[0] || paymentMethod.methods?.[0] || {};
+            const methodKey = paymentMethod.paymentId || paymentMethod.id || paymentMethod._id || `method-${index}`;
             
             return (
               <div
@@ -317,7 +318,7 @@ const PaymentInitiationComponent = ({
                       {method.mode?.replace(/_/g, ' ') || 'Payment Method'}
                     </span>
                     <p className="text-sm text-gray-600 mt-1">
-                      Auth: {method.auth || 'N/A'}
+                      Auth: {method.auth || 'Standard'}
                     </p>
                     <p className="text-xs text-gray-500">
                       Type: {paymentMethod.type} | Collected by: {paymentMethod.collectedBy}
@@ -588,6 +589,9 @@ const LumpsumTransaction = ({
   const [lumpsumResponse, setLumpsumResponse] = useState(null);
   const [transactionId] = useState(generateTransactionId());
 
+  // Selected folio for existing folio flow
+  const [selectedFolio, setSelectedFolio] = useState(null);
+
   // Payment related states
   const [paymentMethodsData, setPaymentMethodsData] = useState(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
@@ -741,11 +745,25 @@ const LumpsumTransaction = ({
       if (response.ok && data.success) {
         setLumpsumResponse(data.data);
         
-        if (data.data.type === 'LUMPSUM_NEW' || (data.data.existingFolios && data.data.existingFolios.length === 0)) {
+        // Check if there are existing folios
+        if (data.data.existingFolios && data.data.existingFolios.length > 0) {
+          // Automatically select the first existing folio
+          const firstFolio = data.data.existingFolios[0];
+          setSelectedFolio(firstFolio);
+          
+          // Set up payment methods data from the response
+          setPaymentMethodsData({
+            transactionId: data.data.transactionId,
+            paymentMethods: data.data.paymentMethods || [],
+            messageId: data.data.messageId,
+            fulfillmentId: data.data.fulfillmentId
+          });
+          
+          // Go directly to payment step
+          setCurrentStep('payment');
+        } else if (data.data.type === 'LUMPSUM_NEW' || (data.data.existingFolios && data.data.existingFolios.length === 0)) {
           setCurrentStep('folio');
         } else if (data.data.type === 'LUMPSUM_NEW&EXISTING' || data.data.folioStatus === 'NEW_AND_EXISTING') {
-          setCurrentStep('folio');
-        } else if (data.data.existingFolios && data.data.existingFolios.length > 0) {
           setCurrentStep('folio');
         } else {
           if (onFolioSelection) {
@@ -947,17 +965,28 @@ const LumpsumTransaction = ({
     if (!selectedPaymentMethod || !paymentMethodsData) return;
 
     try {
+      // Determine if we're using existing folio or new folio
+      const isExistingFolio = selectedFolio && selectedFolio.folioNumber;
+      
       const paymentInitiationBody = {
-        type: "SELECTEDPAYMENT",
+        type: isExistingFolio ? "EXISTING" : "SELECTEDPAYMENT",
         userId: user?.userId,
         transactionId: paymentMethodsData.transactionId,
-        folioNumber: "1234567",
+        folioNumber: isExistingFolio ? selectedFolio.folioNumber : "1234567",
         paymentIp: "117.200.73.102",
         paymentMethod: {
-          mode: selectedPaymentMethod.methods[0].mode || "UPI_AUTOPAY",
-          auth: selectedPaymentMethod.methods[0].auth 
+          mode: (selectedPaymentMethod.availableMethods?.[0] || selectedPaymentMethod.methods?.[0])?.mode || "UPI_AUTOPAY",
+          auth: (selectedPaymentMethod.availableMethods?.[0] || selectedPaymentMethod.methods?.[0])?.auth 
         }
       };
+
+      // Add additional fields for existing folio
+      if (isExistingFolio) {
+        paymentInitiationBody.messageId = paymentMethodsData.messageId;
+        paymentInitiationBody.fulfillmentId = paymentMethodsData.fulfillmentId;
+      }
+
+      console.log('Payment Initiation Body:', paymentInitiationBody);
 
       const response = await fetch('https://viable-money-be.onrender.com/api/transaction/initiate-payment', {
         method: 'POST',
@@ -1099,6 +1128,11 @@ const LumpsumTransaction = ({
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Lumpsum investment available
+                {selectedFolio && (
+                  <span className="ml-2 text-blue-600">
+                    • Using Folio: {selectedFolio.folioNumber}
+                  </span>
+                )}
               </p>
             </div>
           </div>
