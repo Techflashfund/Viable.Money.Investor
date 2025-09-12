@@ -1,4 +1,4 @@
-import Goals from '../../../components/Goals';
+import Goals from '../../../components/goals';
 
 export default function GoalsPage() {
   return <Goals />;
