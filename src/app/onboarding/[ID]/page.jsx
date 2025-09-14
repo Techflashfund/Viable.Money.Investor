@@ -1,9 +1,15 @@
 'use client';
 import React, { useState, useCallback, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import useAuthStore from '../../store/auth';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import useAuthStore from '@/store/auth';
 
 const InvestorOnboarding = () => {
+ const params = useParams();
+   const router = useRouter();
+   const transactionId = params.ID; // Get transaction ID from URL params
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -11,19 +17,18 @@ const InvestorOnboarding = () => {
   const [kycVerificationStatus, setKycVerificationStatus] = useState(null);
   const [bankVerificationStatus, setBankVerificationStatus] = useState(null);
   const [verificationLoading, setVerificationLoading] = useState(false);
-  const [bearerToken, setBearerToken] = useState(null);
   const [needsSignature, setNeedsSignature] = useState(false);
   const [maxSteps, setMaxSteps] = useState(4);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+  const [geolocation, setGeolocation] = useState(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+const updateOnboardingStatus = useAuthStore(state => state.updateOnboardingStatus);
 
-  const { user, token, transactionId, getAuthHeaders } = useAuthStore();
-
-  const API_BASE_URL = 'https://viable-money-be.onrender.com';
-  const CYBRILLA_API_BASE = 'https://api.cybrilla.com/poa';
-  const AUTH_API_BASE = 'https://api.fintechprimitives.com/v2/auth/cybrillapoa';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://viable-money-be.onrender.com';
 
   // Form data for all steps
   const [formData, setFormData] = useState({
-    // Step 1 - Basic Information (removed geolocation)
+    // Step 1 - Basic Information (removed aadhaarLastFour)
     name: '',
     pan: '',
     dob: '',
@@ -38,7 +43,6 @@ const InvestorOnboarding = () => {
     countryOfBirth: 'in',
     placeOfBirth: '',
     politicalExposure: 'no_exposure',
-    aadhaarLastFour: '',
     nationality: 'in',
     citizenships: ['in'],
     indiaTaxResidencyStatus: 'resident',
@@ -86,183 +90,130 @@ const InvestorOnboarding = () => {
         pincode: '',
         country: 'IN'
       },
-      allocationPercentage: 100,
-      guardian: {
-        name: '',
-        idType: '',
-        idNumber: '',
-        phone: '',
-        email: '',
-        address: {
-          line: '',
-          pincode: '',
-          country: 'IN'
-        }
-      }
+      allocationPercentage: 100
     }],
 
-    // Step 5 - Signature (conditional)
-    signatureFile: null
+    // Step 5 - Signature (conditional) - NEW: includes Aadhaar and geolocation
+    signatureFile: null,
+    aadhaarLastFour: '', // Moved to signature step
+    geolocation: null
   });
 
-  // Get bearer token for external API calls
-  const getBearerToken = async () => {
-    try {
-      const response = await fetch(`${AUTH_API_BASE}/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'accept': 'application/json'
-        },
-        body: new URLSearchParams({
-          'client_id': 'mfdptnr_vyable_live_5b5857db2f5e437a8ff0801b4632de20',
-          'client_secret': '79TO9yVucY2tAOaI1SvetIDWVDTVjRL3',
-          'grant_type': 'client_credentials'
-        })
-      });
+  // Get user's geolocation
+  const getCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setErrors(prev => ({ ...prev, location: 'Geolocation is not supported by this browser' }));
+      return;
+    }
 
-      const data = await response.json();
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const locationData = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: new Date().toISOString()
+        };
+        setGeolocation(locationData);
+        setFormData(prev => ({ ...prev, geolocation: locationData }));
+        setLocationLoading(false);
+        setErrors(prev => ({ ...prev, location: '' }));
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        setErrors(prev => ({ 
+          ...prev, 
+          location: 'Unable to retrieve your location. Please enable location services and try again.' 
+        }));
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 600000 // 10 minutes
+      }
+    );
+  }, []);
+
+  // Check application status and load existing data
+  const checkApplicationStatus = useCallback(async () => {
+    if (!transactionId) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/onboarding/status/${transactionId}`);
+      
       if (response.ok) {
-        setBearerToken(data.access_token);
-        return data.access_token;
-      }
-      throw new Error('Failed to get bearer token');
-    } catch (error) {
-      console.error('Bearer token error:', error);
-      throw error;
-    }
-  };
-
-  // Check KYC status
-  const checkKycStatus = async (pan, token) => {
-    try {
-      // Step 1: Create pre-verification
-      const preVerifyResponse = await fetch(`${CYBRILLA_API_BASE}/pre_verifications`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          investor_identifier: pan
-        })
-      });
-
-      const preVerifyData = await preVerifyResponse.json();
-      if (!preVerifyResponse.ok) {
-        throw new Error('Pre-verification failed');
-      }
-
-      const verificationId = preVerifyData.id;
-
-      // Step 2: Poll for completion
-      let attempts = 0;
-      const maxAttempts = 12; // 1 minute max (5s intervals)
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
-
-        const statusResponse = await fetch(`${CYBRILLA_API_BASE}/pre_verifications/${verificationId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
+        const result = await response.json();
+        if (result.success && result.data) {
+          const { currentStep: apiStep, status, kycStatus, bankVerificationStatus, basicInfo, signatureInfo } = result.data;
+          
+          // Set verification statuses
+          setKycVerificationStatus(kycStatus === 'verified' ? true : kycStatus === 'no_kyc' ? false : null);
+          setBankVerificationStatus(bankVerificationStatus === 'verified' ? true : bankVerificationStatus === 'failed' ? false : null);
+          
+          // Determine if signature step is needed
+          if (kycStatus === 'no_kyc' || status === 'signature_pending') {
+            setNeedsSignature(true);
+            setMaxSteps(5);
           }
-        });
-
-        const statusData = await statusResponse.json();
-        
-        if (statusData.status === 'completed') {
-          return statusData.readiness?.status === 'verified';
-        }
-
-        attempts++;
-      }
-
-      return false; // Timeout
-    } catch (error) {
-      console.error('KYC verification error:', error);
-      return false;
-    }
-  };
-
-  // Check bank verification status
-  const checkBankStatus = async (pan, name, bankAccount, token) => {
-    try {
-      // Step 1: Create bank pre-verification
-      const preVerifyResponse = await fetch(`${CYBRILLA_API_BASE}/pre_verifications`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          investor_identifier: pan,
-          pan: {
-            value: pan
-          },
-          name: {
-            value: name
-          },
-          bank_accounts: [
-            {
-              value: {
-                account_number: bankAccount.number,
-                ifsc_code: bankAccount.ifscCode,
-                account_type: bankAccount.type
-              },
-              verify_manually_if_required: false
-            }
-          ]
-        })
-      });
-
-      const preVerifyData = await preVerifyResponse.json();
-      if (!preVerifyResponse.ok) {
-        throw new Error('Bank pre-verification failed');
-      }
-
-      const verificationId = preVerifyData.id;
-
-      // Step 2: Poll for completion
-      let attempts = 0;
-      const maxAttempts = 12;
-
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 5000));
-
-        const statusResponse = await fetch(`${CYBRILLA_API_BASE}/pre_verifications/${verificationId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
+          
+          // Pre-fill form data from API response
+          if (basicInfo) {
+            setFormData(prev => ({
+              ...prev,
+              ...basicInfo,
+              spouseName: basicInfo.spouseName || '',
+            }));
           }
-        });
-
-        const statusData = await statusResponse.json();
-        
-        if (statusData.status === 'completed') {
-          const bankStatus = statusData.bank_accounts?.[0]?.status === 'verified';
-          return bankStatus;
+          
+          // Determine current step based on status
+          let stepToShow = 1;
+          switch (status) {
+            case 'step1_completed':
+              stepToShow = 2;
+              break;
+            case 'step2_completed':
+              stepToShow = 3;
+              break;
+            case 'step3_completed':
+              stepToShow = 4;
+              break;
+            case 'signature_pending':
+              stepToShow = needsSignature ? 5 : 4;
+              break;
+            case 'completed':
+              // Redirect to dashboard or show completion message
+              router.push('/dashboard');
+              return;
+            default:
+              stepToShow = apiStep || 1;
+          }
+          
+          setCurrentStep(stepToShow);
         }
-
-        attempts++;
       }
-
-      return false;
     } catch (error) {
-      console.error('Bank verification error:', error);
-      return false;
+      console.error('Error checking application status:', error);
+    } finally {
+      setInitialDataLoaded(true);
     }
-  };
+  }, [transactionId, router]);
 
-  // Validation patterns (removed geolocation)
+  // Load application status on component mount
+  useEffect(() => {
+    if (transactionId && !initialDataLoaded) {
+      checkApplicationStatus();
+    }
+  }, [transactionId, checkApplicationStatus, initialDataLoaded]);
+
+  // Validation patterns (removed aadhaar from basic info)
   const patterns = {
     pan: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
     phone: /^[6-9]\d{9}$/,
     ifsc: /^[A-Z]{4}0[A-Z0-9]{6}$/,
     pincode: /^[1-9][0-9]{5}$/,
-    aadhaar: /^\d{4}$/,
+    aadhaar:/^\d{4}$/, // Full Aadhaar for signature step
     email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
     bankAccount: /^\d{9,18}$/,
     name: /^[A-Za-z ]{1,70}$/,
@@ -384,7 +335,7 @@ const InvestorOnboarding = () => {
     ]
   };
 
-  // Validation functions (removed geolocation validation)
+  // Validation functions (removed aadhaar validation from basic info)
   const validateStep = (step) => {
     const newErrors = {};
     
@@ -406,7 +357,6 @@ const InvestorOnboarding = () => {
         if (!formData.countryOfBirth) newErrors.countryOfBirth = 'Country of birth is required';
         if (!patterns.place.test(formData.placeOfBirth)) newErrors.placeOfBirth = 'Place of birth is required (2-50 characters)';
         if (!formData.politicalExposure) newErrors.politicalExposure = 'Political exposure status is required';
-        if (!patterns.aadhaar.test(formData.aadhaarLastFour)) newErrors.aadhaarLastFour = 'Last 4 digits of Aadhaar required';
         
         // Age validation
         if (formData.dob) {
@@ -453,9 +403,15 @@ const InvestorOnboarding = () => {
         }
         break;
 
-      case 5: // Signature step
+      case 5: // Signature step - NEW validation
         if (!formData.signatureFile) {
           newErrors.signatureFile = 'Please upload your signature';
+        }
+        if (!patterns.aadhaar.test(formData.aadhaarLastFour)) {
+          newErrors.aadhaarLastFour = 'Aadhaar number must be exactly 12 digits';
+        }
+        if (!geolocation || !geolocation.latitude || !geolocation.longitude) {
+          newErrors.location = 'Location is required for signature verification';
         }
         break;
     }
@@ -464,45 +420,45 @@ const InvestorOnboarding = () => {
   };
 
   // API call function
-  const apiCall = async (endpoint, data) => {
+  const apiCall = async (endpoint, data, method = 'POST') => {
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        ...getAuthHeaders()
-      };
-
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(data)
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: method !== 'GET' ? JSON.stringify(data) : undefined
       });
 
       const result = await response.json();
       
       if (!response.ok) {
-        console.error('❌ API Error:', result);
+        console.error('API Error:', result);
         throw new Error(result.message || `API request failed with status ${response.status}`);
       }
       
       return result;
     } catch (error) {
-      console.error('❌ API Call Failed:', error);
+      console.error('API Call Failed:', error);
       throw error;
     }
   };
 
-  // Upload signature file
-  const uploadSignature = async (file) => {
+  // Upload signature file with Aadhaar and geolocation
+  const uploadSignature = async () => {
     try {
       const formDataToUpload = new FormData();
-      formDataToUpload.append('signature', file);
-
-      const headers = getAuthHeaders();
-      delete headers['Content-Type']; // Let browser set Content-Type for FormData
+      formDataToUpload.append('signature', formData.signatureFile);
+      formDataToUpload.append('aadhaarLastFour', formData.aadhaarLastFour);
+      formDataToUpload.append('geolocation', JSON.stringify(geolocation));
+      
+      console.log('Uploading signature with data:', {
+        aadhaarLastFour: formData.aadhaarLastFour,
+        geolocation
+      });
 
       const response = await fetch(`${API_BASE_URL}/api/onboarding/signature/${transactionId}`, {
         method: 'POST',
-        headers,
         body: formDataToUpload
       });
 
@@ -514,7 +470,7 @@ const InvestorOnboarding = () => {
       
       return result;
     } catch (error) {
-      console.error('❌ Signature Upload Failed:', error);
+      console.error('Signature Upload Failed:', error);
       throw error;
     }
   };
@@ -544,7 +500,6 @@ const InvestorOnboarding = () => {
       switch (currentStep) {
         case 1:
           endpoint = `/api/onboarding/basic-info/${transactionId}`;
-          // Remove geolocation from the data sent to backend
           data = {
             name: formData.name,
             pan: formData.pan,
@@ -560,53 +515,19 @@ const InvestorOnboarding = () => {
             countryOfBirth: formData.countryOfBirth,
             placeOfBirth: formData.placeOfBirth,
             politicalExposure: formData.politicalExposure,
-            aadhaarLastFour: formData.aadhaarLastFour,
             nationality: formData.nationality,
             citizenships: formData.citizenships,
             indiaTaxResidencyStatus: formData.indiaTaxResidencyStatus
           };
 
           result = await apiCall(endpoint, data);
-
+          
           if (result && result.success) {
-            // Check KYC status after basic info submission
-            setVerificationLoading(true);
-            setSuccessMessage('Verifying KYC status...');
-            
-            try {
-              const token = bearerToken || await getBearerToken();
-              const kycVerified = await checkKycStatus(formData.pan, token);
-              
-              setKycVerificationStatus(kycVerified);
-              
-              if (kycVerified) {
-                setSuccessMessage('✅ KYC verified! Proceeding to next step...');
-                setTimeout(() => {
-                  setCurrentStep(2);
-                  setSuccessMessage('');
-                  setVerificationLoading(false);
-                }, 1500);
-              } else {
-                setNeedsSignature(true);
-                setMaxSteps(5);
-                setSuccessMessage('Basic information saved. Additional verification required.');
-                setTimeout(() => {
-                  setCurrentStep(2);
-                  setSuccessMessage('');
-                  setVerificationLoading(false);
-                }, 1500);
-              }
-            } catch (error) {
-              console.error('KYC verification failed:', error);
-              setNeedsSignature(true);
-              setMaxSteps(5);
-              setSuccessMessage('Basic information saved. Proceeding with manual verification.');
-              setTimeout(() => {
-                setCurrentStep(2);
-                setSuccessMessage('');
-                setVerificationLoading(false);
-              }, 1500);
-            }
+            setSuccessMessage('Basic information saved successfully! Processing KYC verification...');
+            setTimeout(() => {
+              setCurrentStep(2);
+              setSuccessMessage('');
+            }, 1500);
           }
           break;
           
@@ -619,12 +540,25 @@ const InvestorOnboarding = () => {
           };
 
           result = await apiCall(endpoint, data);
+          
           if (result && result.success) {
-            setSuccessMessage('Address information saved successfully!');
+            // Check KYC verification status from response
+            if (result.data?.kycStatus === 'verified') {
+              setKycVerificationStatus(true);
+              setSuccessMessage('✅ Address saved and KYC verified! Proceeding to next step...');
+            } else if (result.data?.kycStatus === 'no_kyc') {
+              setKycVerificationStatus(false);
+              setNeedsSignature(true);
+              setMaxSteps(5);
+              setSuccessMessage('Address information saved. Additional verification required.');
+            } else {
+              setSuccessMessage('Address information saved successfully!');
+            }
+            
             setTimeout(() => {
               setCurrentStep(3);
               setSuccessMessage('');
-            }, 1000);
+            }, 1500);
           }
           break;
           
@@ -638,41 +572,11 @@ const InvestorOnboarding = () => {
           result = await apiCall(endpoint, data);
           
           if (result && result.success) {
-            // Check bank verification after bank info submission
-            setVerificationLoading(true);
-            setSuccessMessage('Verifying bank details...');
-            
-            try {
-              const token = bearerToken || await getBearerToken();
-              const bankVerified = await checkBankStatus(
-                formData.pan, 
-                formData.name, 
-                formData.bankAccount, 
-                token
-              );
-              
-              setBankVerificationStatus(bankVerified);
-              
-              if (bankVerified) {
-                setSuccessMessage('✅ Bank details verified! Proceeding to next step...');
-              } else {
-                setSuccessMessage('Bank details saved. Manual verification may be required.');
-              }
-              
-              setTimeout(() => {
-                setCurrentStep(4);
-                setSuccessMessage('');
-                setVerificationLoading(false);
-              }, 2000);
-            } catch (error) {
-              console.error('Bank verification failed:', error);
-              setSuccessMessage('Bank details saved. Proceeding to next step...');
-              setTimeout(() => {
-                setCurrentStep(4);
-                setSuccessMessage('');
-                setVerificationLoading(false);
-              }, 1500);
-            }
+            setSuccessMessage('Bank information saved successfully! Processing bank verification...');
+            setTimeout(() => {
+              setCurrentStep(4);
+              setSuccessMessage('');
+            }, 1500);
           }
           break;
           
@@ -690,41 +594,46 @@ const InvestorOnboarding = () => {
           result = await apiCall(endpoint, data);
           
           if (result && result.success) {
-            if (needsSignature) {
-              setSuccessMessage('Nomination information saved! Please upload your signature.');
+            // Check bank verification status from response
+            if (result.data?.bankVerificationStatus === 'verified') {
+              setBankVerificationStatus(true);
+            } else if (result.data?.bankVerificationStatus === 'failed') {
+              setBankVerificationStatus(false);
+            }
+
+            if (needsSignature || kycVerificationStatus === false) {
+              setSuccessMessage('Nomination information saved! Please upload your signature and provide Aadhaar details.');
               setTimeout(() => {
                 setCurrentStep(5);
                 setSuccessMessage('');
               }, 1000);
             } else {
-              // Show simple success and redirect
               setSuccessMessage('✅ KYC process completed successfully!');
               setTimeout(() => {
-                window.location.href = '/dashboard';
+                router.push('/dashboard');
               }, 1500);
             }
           }
           break;
 
-        case 5: // Signature upload
-          result = await uploadSignature(formData.signatureFile);
+        case 5: // Signature upload with Aadhaar and geolocation
+          result = await uploadSignature();
           
           if (result && result.success) {
+            updateOnboardingStatus(true);
             setSuccessMessage('✅ KYC process completed successfully!');
             setTimeout(() => {
-              window.location.href = '/dashboard';
+              router.push('/dashboard');
             }, 1500);
           }
           break;
       }
 
     } catch (error) {
-      console.error('❌ Step submission failed:', error);
+      console.error('Step submission failed:', error);
       setErrors({ api: error.message });
     } finally {
-      if (!verificationLoading) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
@@ -767,7 +676,6 @@ const InvestorOnboarding = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate file type and size
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
       const maxSize = 5 * 1024 * 1024; // 5MB
 
@@ -839,7 +747,7 @@ const InvestorOnboarding = () => {
 
   // Add signature step if needed
   if (needsSignature) {
-    steps.push({ number: 5, title: 'Signature', subtitle: 'Upload signature document' });
+    steps.push({ number: 5, title: 'Signature & Verification', subtitle: 'Complete verification process' });
   }
 
   const renderCurrentStepTitle = () => {
@@ -848,14 +756,26 @@ const InvestorOnboarding = () => {
       case 2: return 'Address & contact details';
       case 3: return 'Bank & tax information';
       case 4: return 'Nomination information';
-      case 5: return 'Upload your signature';
+      case 5: return 'Complete verification';
       default: return 'Your information';
     }
   };
 
   const handleReturnHome = () => {
-    window.location.href = '/';
+    router.push('/');
   };
+
+  // Show loading while checking initial status
+  if (!initialDataLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your application...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 relative">
@@ -994,40 +914,30 @@ const InvestorOnboarding = () => {
 
             {/* Success/Error Messages */}
             {successMessage && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <p className="ml-3 text-sm font-medium text-green-800">{successMessage}</p>
-                </div>
-              </div>
+              <Alert className="mb-6 border-green-200 bg-green-50">
+                <AlertDescription className="text-green-800">
+                  {successMessage}
+                </AlertDescription>
+              </Alert>
             )}
 
             {(errors.api || errors.general) && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 001.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <p className="ml-3 text-sm font-medium text-red-800">{errors.api || errors.general}</p>
-                </div>
-              </div>
+              <Alert className="mb-6 border-red-200 bg-red-50">
+                <AlertDescription className="text-red-800">
+                  {errors.api || errors.general}
+                </AlertDescription>
+              </Alert>
             )}
 
             {/* Form Content */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
               <div className="space-y-6">
-                {/* Step 1: Basic Information (removed geolocation fields) */}
+                {/* Step 1: Basic Information (removed aadhaarLastFour) */}
                 {currentStep === 1 && (
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Full name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Full name *</label>
                         <input
                           type="text"
                           value={formData.name}
@@ -1041,7 +951,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">PAN number</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">PAN number *</label>
                         <input
                           type="text"
                           value={formData.pan}
@@ -1058,7 +968,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of birth</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Date of birth *</label>
                         <input
                           type="date"
                           value={formData.dob}
@@ -1071,7 +981,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">Gender</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">Gender *</label>
                         <div className="space-y-2">
                           {options.gender.map(option => (
                             <label key={option.value} className="flex items-center">
@@ -1093,7 +1003,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Father's name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Father's name *</label>
                         <input
                           type="text"
                           value={formData.fatherName}
@@ -1107,7 +1017,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Mother's name</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Mother's name *</label>
                         <input
                           type="text"
                           value={formData.motherName}
@@ -1123,7 +1033,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Marital status</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Marital status *</label>
                         <select
                           value={formData.maritalStatus}
                           onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
@@ -1141,7 +1051,7 @@ const InvestorOnboarding = () => {
 
                       {formData.maritalStatus === 'married' && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Spouse name</label>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Spouse name *</label>
                           <input
                             type="text"
                             value={formData.spouseName}
@@ -1158,7 +1068,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Occupation</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Occupation *</label>
                         <select
                           value={formData.occupation}
                           onChange={(e) => handleInputChange('occupation', e.target.value)}
@@ -1175,7 +1085,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Source of wealth</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Source of wealth *</label>
                         <select
                           value={formData.sourceOfWealth}
                           onChange={(e) => handleInputChange('sourceOfWealth', e.target.value)}
@@ -1194,7 +1104,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Annual income range</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Annual income range *</label>
                         <select
                           value={formData.incomeRange}
                           onChange={(e) => handleInputChange('incomeRange', e.target.value)}
@@ -1211,7 +1121,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Country of birth</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Country of birth *</label>
                         <select
                           value={formData.countryOfBirth}
                           onChange={(e) => handleInputChange('countryOfBirth', e.target.value)}
@@ -1229,7 +1139,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Place of birth</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Place of birth *</label>
                         <input
                           type="text"
                           value={formData.placeOfBirth}
@@ -1241,25 +1151,10 @@ const InvestorOnboarding = () => {
                         />
                         {errors.placeOfBirth && <p className="mt-1 text-sm text-red-600">{errors.placeOfBirth}</p>}
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar (last 4 digits)</label>
-                        <input
-                          type="text"
-                          value={formData.aadhaarLastFour}
-                          onChange={(e) => handleInputChange('aadhaarLastFour', e.target.value)}
-                          placeholder="1234"
-                          maxLength={4}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                            errors.aadhaarLastFour ? 'border-red-300' : 'border-gray-300'
-                          }`}
-                        />
-                        {errors.aadhaarLastFour && <p className="mt-1 text-sm text-red-600">{errors.aadhaarLastFour}</p>}
-                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">Political exposure</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">Political exposure *</label>
                       <div className="space-y-2">
                         {options.politicalExposure.map(option => (
                           <label key={option.value} className="flex items-center">
@@ -1283,13 +1178,14 @@ const InvestorOnboarding = () => {
                 {/* Step 2: Address Information */}
                 {currentStep === 2 && (
                   <div className="space-y-6">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 mb-1">Communication Address</h4>
-                      <p className="text-sm text-blue-700">Provide your current residential address</p>
-                    </div>
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertDescription className="text-blue-800">
+                        <strong>Communication Address:</strong> Provide your current residential address
+                      </AlertDescription>
+                    </Alert>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Address line</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Address line *</label>
                       <input
                         type="text"
                         value={formData.communicationAddress.line}
@@ -1304,7 +1200,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">City</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
                         <input
                           type="text"
                           value={formData.communicationAddress.city}
@@ -1318,7 +1214,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">State</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
                         <input
                           type="text"
                           value={formData.communicationAddress.state}
@@ -1334,7 +1230,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Pincode</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
                         <input
                           type="text"
                           value={formData.communicationAddress.pincode}
@@ -1364,7 +1260,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone number</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Phone number *</label>
                         <input
                           type="text"
                           value={formData.phone.number}
@@ -1394,7 +1290,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Email address</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email address *</label>
                         <input
                           type="email"
                           value={formData.email.address}
@@ -1426,13 +1322,14 @@ const InvestorOnboarding = () => {
                 {/* Step 3: Bank & Tax Information */}
                 {currentStep === 3 && (
                   <div className="space-y-6">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 mb-1">Bank Account Information</h4>
-                      <p className="text-sm text-blue-700">Provide your primary bank account details</p>
-                    </div>
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertDescription className="text-blue-800">
+                        <strong>Bank Account Information:</strong> Provide your primary bank account details
+                      </AlertDescription>
+                    </Alert>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Account number</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account number *</label>
                       <input
                         type="text"
                         value={formData.bankAccount.number}
@@ -1446,7 +1343,7 @@ const InvestorOnboarding = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Account holder name</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account holder name *</label>
                       <input
                         type="text"
                         value={formData.bankAccount.primaryHolderName}
@@ -1461,7 +1358,7 @@ const InvestorOnboarding = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">IFSC code</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">IFSC code *</label>
                         <input
                           type="text"
                           value={formData.bankAccount.ifscCode}
@@ -1476,7 +1373,7 @@ const InvestorOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Account type</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Account type *</label>
                         <select
                           value={formData.bankAccount.type}
                           onChange={(e) => handleInputChange('bankAccount.type', e.target.value)}
@@ -1492,24 +1389,25 @@ const InvestorOnboarding = () => {
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                      <p className="text-sm text-gray-600">
+                    <Alert className="border-gray-200 bg-gray-50">
+                      <AlertDescription className="text-gray-600">
                         <strong>Note:</strong> Tax residency information is optional and can be left empty if not applicable.
-                      </p>
-                    </div>
+                      </AlertDescription>
+                    </Alert>
                   </div>
                 )}
 
                 {/* Step 4: Nomination Information */}
                 {currentStep === 4 && (
                   <div className="space-y-6">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 mb-1">Nomination Information</h4>
-                      <p className="text-sm text-blue-700">Choose whether to add nominees for your account</p>
-                    </div>
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertDescription className="text-blue-800">
+                        <strong>Nomination Information:</strong> Choose whether to add nominees for your account
+                      </AlertDescription>
+                    </Alert>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">Do you want to skip nomination?</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">Do you want to skip nomination? *</label>
                       <div className="space-y-2">
                         {options.skipNomination.map(option => (
                           <label key={option.value} className="flex items-center">
@@ -1530,29 +1428,31 @@ const InvestorOnboarding = () => {
 
                     {formData.skipNomination === 'no' && (
                       <div className="space-y-6">
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                          <p className="text-sm text-amber-800">
+                        <Alert className="border-amber-200 bg-amber-50">
+                          <AlertDescription className="text-amber-800">
                             <strong>Important:</strong> Total allocation percentage across all nominees must equal 100%.
-                          </p>
-                        </div>
+                          </AlertDescription>
+                        </Alert>
 
                         {formData.nominees.map((nominee, index) => (
                           <div key={index} className="border border-gray-200 rounded-lg p-6">
                             <div className="flex items-center justify-between mb-4">
                               <h5 className="font-medium text-gray-900">Nominee {index + 1}</h5>
                               {formData.nominees.length > 1 && (
-                                <button
+                                <Button
                                   onClick={() => removeNominee(index)}
-                                  className="text-red-600 hover:text-red-800 text-sm"
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600 hover:text-red-800 border-red-300 hover:border-red-400"
                                 >
                                   Remove
-                                </button>
+                                </Button>
                               )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Nominee name</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Nominee name *</label>
                                 <input
                                   type="text"
                                   value={nominee.name}
@@ -1566,7 +1466,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Relationship *</label>
                                 <select
                                   value={nominee.relationship}
                                   onChange={(e) => handleNomineeChange(index, 'relationship', e.target.value)}
@@ -1583,7 +1483,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Date of birth</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Date of birth *</label>
                                 <input
                                   type="date"
                                   value={nominee.dob}
@@ -1609,7 +1509,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">ID number</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">ID number *</label>
                                 <input
                                   type="text"
                                   value={nominee.idNumber}
@@ -1623,7 +1523,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
                                 <input
                                   type="text"
                                   value={nominee.phone}
@@ -1638,7 +1538,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
                                 <input
                                   type="email"
                                   value={nominee.email}
@@ -1652,7 +1552,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
                                 <input
                                   type="text"
                                   value={nominee.address.line}
@@ -1666,7 +1566,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Pincode</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
                                 <input
                                   type="text"
                                   value={nominee.address.pincode}
@@ -1681,7 +1581,7 @@ const InvestorOnboarding = () => {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Allocation %</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Allocation % *</label>
                                 <input
                                   type="number"
                                   min="0.01"
@@ -1698,12 +1598,13 @@ const InvestorOnboarding = () => {
                         ))}
 
                         <div className="flex items-center justify-between">
-                          <button
+                          <Button
                             onClick={addNominee}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            variant="outline"
+                            className="text-blue-600 hover:text-blue-800 border-blue-300 hover:border-blue-400"
                           >
                             + Add Another Nominee
-                          </button>
+                          </Button>
                           <div className="text-sm text-gray-600">
                             Total allocation: {formData.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0)}%
                           </div>
@@ -1715,16 +1616,75 @@ const InvestorOnboarding = () => {
                   </div>
                 )}
 
-                {/* Step 5: Signature Upload (conditional) */}
+                {/* Step 5: Signature Upload with Aadhaar and Geolocation - NEW */}
                 {currentStep === 5 && (
                   <div className="space-y-6">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 mb-1">Upload Signature</h4>
-                      <p className="text-sm text-blue-700">Please upload your signature document for verification</p>
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertDescription className="text-blue-800">
+                        <strong>Complete Verification:</strong> Upload your signature, provide Aadhaar details, and allow location access for final verification
+                      </AlertDescription>
+                    </Alert>
+
+                    {/* Aadhaar Number Input - NEW */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number *</label>
+                      <input
+                        type="text"
+                        value={formData.aadhaarLastFour}
+                        onChange={(e) => handleInputChange('aadhaarLastFour', e.target.value)}
+                        placeholder="1234"
+                        maxLength={12}
+                        className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                          errors.aadhaarLastFour ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      />
+                      {errors.aadhaarLastFour && <p className="mt-1 text-sm text-red-600">{errors.aadhaarLastFour}</p>}
+                      <p className="mt-2 text-sm text-gray-500">
+                        Your complete 12-digit Aadhaar number is required for verification
+                      </p>
                     </div>
 
+                    {/* Location Access - NEW */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Signature Document</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Location Verification *</label>
+                      <div className="flex items-center space-x-3">
+                        <Button
+                          onClick={getCurrentLocation}
+                          disabled={locationLoading || !!geolocation}
+                          variant={geolocation ? "default" : "outline"}
+                          className={geolocation ? "bg-green-600 hover:bg-green-700" : ""}
+                        >
+                          {locationLoading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                              Getting Location...
+                            </>
+                          ) : geolocation ? (
+                            <>
+                              <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Location Captured
+                            </>
+                          ) : (
+                            'Get Current Location'
+                          )}
+                        </Button>
+                        {geolocation && (
+                          <span className="text-sm text-green-600">
+                            Location verified (Accuracy: ~{Math.round(geolocation.accuracy)}m)
+                          </span>
+                        )}
+                      </div>
+                      {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
+                      <p className="mt-2 text-sm text-gray-500">
+                        We need your location for security and compliance purposes
+                      </p>
+                    </div>
+
+                    {/* Signature Upload */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Signature Document *</label>
                       <input
                         type="file"
                         accept="image/jpeg,image/jpg,image/png,application/pdf"
@@ -1740,11 +1700,11 @@ const InvestorOnboarding = () => {
                     </div>
 
                     {formData.signatureFile && (
-                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800">
-                          ✅ File selected: {formData.signatureFile.name}
-                        </p>
-                      </div>
+                      <Alert className="border-green-200 bg-green-50">
+                        <AlertDescription className="text-green-800">
+                          File selected: {formData.signatureFile.name}
+                        </AlertDescription>
+                      </Alert>
                     )}
                   </div>
                 )}
@@ -1752,7 +1712,7 @@ const InvestorOnboarding = () => {
 
               {/* Continue Button */}
               <div className="mt-8 pt-6 border-t border-gray-200 flex justify-end">
-                <button
+                <Button
                   onClick={handleStepSubmit}
                   disabled={loading || verificationLoading}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
@@ -1760,16 +1720,14 @@ const InvestorOnboarding = () => {
                   {(loading || verificationLoading) ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>
-                        {verificationLoading ? 'Verifying...' : 'Processing...'}
-                      </span>
+                      <span>Processing...</span>
                     </>
                   ) : currentStep === maxSteps ? (
                     'Complete KYC'
                   ) : (
                     'Continue'
                   )}
-                </button>
+                </Button>
               </div>
             </div>
           </div>

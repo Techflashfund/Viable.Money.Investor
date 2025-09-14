@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "InvestFund Dashboard",
-  description: "Your investment dashboard",
+  title: "Viable.Money",
+  description: "Invest smarter, live better",
 };
 
 export default function RootLayout({ children }) {

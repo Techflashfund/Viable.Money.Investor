@@ -307,7 +307,7 @@ const UserTopNav = () => {
     <div className="w-full relative">
       {/* Search Popup Modal */}
       {showSearchPopup && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-start justify-center pt-20">
+        <div className="fixed inset-0 bg-white/70  z-50 flex items-start justify-center pt-20">
           <div 
             ref={popupRef}
             className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[70vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-200"
@@ -381,7 +381,7 @@ const UserTopNav = () => {
                             </span>
                             <span>Others</span>
                             <span className="text-blue-600 font-medium">
-                              {fund.fundType || 'Growth'}
+                              {fund.fundType}
                             </span>
                           </div>
                         </div>

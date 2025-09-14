@@ -96,7 +96,7 @@ const LumpsumFormComponent = ({ fundData, lumpsumFulfillments, onSubmit, loading
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Lumpsum Fulfillment Selection (if multiple options available) */}
       {lumpsumFulfillments.length > 1 && (
         <div>
@@ -106,7 +106,7 @@ const LumpsumFormComponent = ({ fundData, lumpsumFulfillments, onSubmit, loading
           <select
             value={currentFulfillment?.fulfillmentId || ''}
             onChange={(e) => handleLumpsumFulfillmentChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {lumpsumFulfillments.map(fulfillment => (
               <option key={fulfillment.fulfillmentId} value={fulfillment.fulfillmentId}>
@@ -119,8 +119,8 @@ const LumpsumFormComponent = ({ fundData, lumpsumFulfillments, onSubmit, loading
 
       {/* Lumpsum Amount */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Investment Amount (₹) <span className="text-red-500">*</span>
+        <label className="block text-sm font-medium text-gray-700 mb-3">
+          Investment Amount <span className="text-red-500">*</span>
         </label>
         <div className="relative">
           <IndianRupee className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -132,14 +132,14 @@ const LumpsumFormComponent = ({ fundData, lumpsumFulfillments, onSubmit, loading
             min={thresholds.amountMin}
             max={thresholds.amountMax}
             step={thresholds.amountMultiples || 1}
-            className={`w-full pl-10 pr-4 py-3 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+            className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg ${
               errors.amount ? 'border-red-300' : 'border-gray-300'
             }`}
           />
         </div>
-        {errors.amount && <p className="mt-1 text-sm text-red-600">{errors.amount}</p>}
+        {errors.amount && <p className="mt-2 text-sm text-red-600">{errors.amount}</p>}
         {thresholds.amountMin && (
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-2 text-xs text-gray-500">
             Minimum amount: ₹{thresholds.amountMin?.toLocaleString()}
             {thresholds.amountMultiples && thresholds.amountMultiples > 1 && ` (in multiples of ₹${thresholds.amountMultiples})`}
           </p>
@@ -150,7 +150,7 @@ const LumpsumFormComponent = ({ fundData, lumpsumFulfillments, onSubmit, loading
         <Button
           onClick={handleSubmit}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-12 py-6 rounded-full text-base font-medium"
+          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-12 py-3 rounded-full text-base font-medium"
         >
           Invest Now
         </Button>
@@ -159,48 +159,8 @@ const LumpsumFormComponent = ({ fundData, lumpsumFulfillments, onSubmit, loading
   );
 };
 
-// 2. Folio Selection Component
-const FolioSelectionComponent = ({ lumpsumResponse, onCreateFolio, onSelectExistingFolio, loading, errors }) => {
-  const hasExistingFolios = lumpsumResponse?.existingFolios && lumpsumResponse.existingFolios.length > 0;
-  const hasNewFolioOption = lumpsumResponse?.newFolio;
-
-  if (!hasExistingFolios && hasNewFolioOption) {
-    return (
-      <div className="space-y-4">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-            <FileText className="w-8 h-8 text-blue-600" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Create New Folio
-          </h3>
-          <p className="text-gray-600 mb-6">
-            No existing folio found. A new folio will be created for your lumpsum investment.
-          </p>
-        </div>
-         <div className='flex justify-center pt-4'>
-        <Button
-          onClick={onCreateFolio}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-12 py-6 rounded-full text-base font-medium"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating Folio...
-            </>
-          ) : (
-            <>
-              
-              Create New Folio
-            </>
-          )}
-        </Button>
-        </div>
-      </div>
-    );
-  }
-
+// 2. Folio Selection Component (Only for new folio case)
+const FolioSelectionComponent = ({ lumpsumResponse, onCreateFolio, loading, errors }) => {
   return (
     <div className="space-y-6">
       <div className="text-center">
@@ -208,69 +168,31 @@ const FolioSelectionComponent = ({ lumpsumResponse, onCreateFolio, onSelectExist
           <FileText className="w-8 h-8 text-blue-600" />
         </div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
-          Select Folio Option
+          Create New Folio
         </h3>
         <p className="text-gray-600 mb-6">
-          Choose to use an existing folio or create a new one for your lumpsum investment.
+          No existing folio found. A new folio will be created for your lumpsum investment.
         </p>
       </div>
-
-      {hasExistingFolios && (
-        <div className="space-y-4">
-          <h4 className="font-medium text-gray-900">Use Existing Folio</h4>
-          {lumpsumResponse.existingFolios.map((folio, index) => (
-            <div
-              key={index}
-              onClick={() => onSelectExistingFolio(folio)}
-              className="border-2 border-gray-200 rounded p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium text-gray-900">Folio: {folio.folioNumber}</p>
-                  <p className="text-sm text-gray-600">Holder: {folio.holderName}</p>
-                  <p className="text-xs text-gray-500">Created: {folio.createdOn}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500">Email: {folio.maskedEmail}</p>
-                  <p className="text-xs text-gray-500">Mobile: {folio.maskedMobile}</p>
-                  <span className="inline-block mt-1 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                    {folio.holdingPattern}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {hasNewFolioOption && (
-        <div className="space-y-4">
-          <div className="flex items-center">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="px-3 text-sm text-gray-500">OR</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-          </div>
-          
-          <Button
-            onClick={onCreateFolio}
-            disabled={loading}
-            variant="outline"
-            className="w-full border-blue-200 hover:bg-blue-50"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating New Folio...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Create New Folio
-              </>
-            )}
-          </Button>
-        </div>
-      )}
+       <div className='flex justify-center pt-4'>
+      <Button
+        onClick={onCreateFolio}
+        disabled={loading}
+        className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-12 py-3 rounded-full text-base font-medium"
+      >
+        {loading ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Creating Folio...
+          </>
+        ) : (
+          <>
+            
+            Create New Folio
+          </>
+        )}
+      </Button>
+      </div>
     </div>
   );
 };
@@ -282,52 +204,96 @@ const PaymentInitiationComponent = ({
   loading,
   errors 
 }) => {
-  // Filter out payment methods with null auth (cc and ccc)
-  const filteredPaymentMethods = paymentMethodsData?.paymentMethods?.filter(paymentMethod => {
-    const method = paymentMethod.availableMethods?.[0] || paymentMethod.methods?.[0];
-    return method?.auth !== "cc" && method?.auth !== "ccc";
-  }) || [];
+  // Filter payment methods to only show UPI and NETBANKING
+  const getFilteredPaymentMethods = () => {
+    if (!paymentMethodsData?.paymentMethods) return [];
+    
+    return paymentMethodsData.paymentMethods.filter(paymentMethod => {
+      const method = paymentMethod.availableMethods?.[0] || paymentMethod.methods?.[0];
+      const mode = method?.mode?.toLowerCase();
+      
+      // Only include UPI and NETBANKING methods
+      return (mode === 'upi' || mode === 'upi_autopay' || mode === 'netbanking');
+    }).map(paymentMethod => {
+      const method = paymentMethod.availableMethods?.[0] || paymentMethod.methods?.[0];
+      const mode = method?.mode?.toLowerCase();
+      
+      // Normalize to either UPI or NETBANKING
+      const normalizedType = (mode === 'upi' || mode === 'upi_autopay') ? 'UPI' : 'NETBANKING';
+      
+      return {
+        ...paymentMethod,
+        displayName: normalizedType,
+        normalizedType
+      };
+    });
+  };
+
+  const filteredPaymentMethods = getFilteredPaymentMethods();
+  
+  // Remove duplicates by normalizedType
+  const uniquePaymentMethods = filteredPaymentMethods.reduce((acc, current) => {
+    const existing = acc.find(item => item.normalizedType === current.normalizedType);
+    if (!existing) {
+      acc.push(current);
+    }
+    return acc;
+  }, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
           <Shield className="w-8 h-8 text-green-600" />
         </div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Select Payment Method</h3>
         <p className="text-gray-600 mb-6">
-          Choose your preferred payment method for the lumpsum investment
+          Choose your preferred payment method
         </p>
       </div>
       
-      <div className="space-y-3">
-        {filteredPaymentMethods.length > 0 ? (
-          filteredPaymentMethods.map((paymentMethod, index) => {
-            const method = paymentMethod.availableMethods?.[0] || paymentMethod.methods?.[0] || {};
+      <div className="space-y-3 max-w-md mx-auto">
+        {uniquePaymentMethods.length > 0 ? (
+          uniquePaymentMethods.map((paymentMethod, index) => {
             const methodKey = paymentMethod.paymentId || paymentMethod.id || paymentMethod._id || `method-${index}`;
             
             return (
               <div
                 key={methodKey}
                 onClick={() => onPaymentMethodSelect(paymentMethod)}
-                className="border-2 border-gray-200 rounded p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+                className="group border-2 border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 bg-white shadow-sm"
               >
                 <div className="flex items-center justify-between">
-                  <div>
-                    <span className="font-medium text-gray-900">
-                      {method.mode?.replace(/_/g, ' ') || 'Payment Method'}
-                    </span>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Auth: {method.auth || 'Standard'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Type: {paymentMethod.type} | Collected by: {paymentMethod.collectedBy}
-                    </p>
+                  <div className="flex items-center space-x-3">
+                    {/* Payment Method Icon */}
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                      {paymentMethod.normalizedType === 'UPI' ? (
+                        <div className="w-6 h-6 bg-gradient-to-r from-orange-500 to-pink-500 rounded flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">@</span>
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-indigo-600 rounded flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">₹</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Payment Method Name */}
+                    <div>
+                      <span className="font-medium text-gray-900 text-lg">
+                        {paymentMethod.normalizedType}
+                      </span>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        {paymentMethod.normalizedType === 'UPI' ? 'Pay using UPI ' : 'Internet Banking'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
-                      Available
-                    </span>
+                  
+                  {/* Arrow Icon */}
+                  <div className="text-gray-400 group-hover:text-blue-500 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
                 </div>
               </div>
@@ -340,6 +306,8 @@ const PaymentInitiationComponent = ({
           </div>
         )}
       </div>
+
+      
     </div>
   );
 };
@@ -356,7 +324,7 @@ const OTPSentComponent = ({ otpData, onVerifyOTP, onResendOTP, loading, errors }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
           <Mail className="w-8 h-8 text-blue-600" />
@@ -390,7 +358,7 @@ const OTPSentComponent = ({ otpData, onVerifyOTP, onResendOTP, loading, errors }
           onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
           placeholder="Enter 6-digit OTP"
           maxLength={6}
-          className={`w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-mono ${
+          className={`w-full px-3 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-lg font-mono ${
             errors.otp ? 'border-red-300' : 'border-gray-300'
           }`}
         />
@@ -398,20 +366,22 @@ const OTPSentComponent = ({ otpData, onVerifyOTP, onResendOTP, loading, errors }
       </div>
 
       <div className="space-y-3">
-        <Button
-          onClick={handleSubmit}
-          disabled={loading || otp.length !== 6}
-          className="w-full bg-green-600 hover:bg-green-700"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            'Verify OTP'
-          )}
-        </Button>
+        <div className="flex justify-center">
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || otp.length !== 6}
+            className="bg-green-600 hover:bg-green-700 px-12 py-3 rounded-full text-base font-medium"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Verify OTP'
+            )}
+          </Button>
+        </div>
 
         <div className="text-center">
           <Button
@@ -438,7 +408,7 @@ const OTPSentComponent = ({ otpData, onVerifyOTP, onResendOTP, loading, errors }
 // 5. Payment URL Component
 const PaymentURLComponent = ({ paymentData, onOpenPayment, loading }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
           <IndianRupee className="w-8 h-8 text-green-600" />
@@ -463,12 +433,140 @@ const PaymentURLComponent = ({ paymentData, onOpenPayment, loading }) => {
         </div>
       </div>
 
-      <Button
-        onClick={onOpenPayment}
-        className="w-full bg-green-600 hover:bg-green-700 text-lg py-3"
-      >
-        Complete Payment
-      </Button>
+      <div className="flex justify-center">
+        <Button
+          onClick={onOpenPayment}
+          className="bg-green-600 hover:bg-green-700 text-lg py-3 px-12 rounded-full"
+        >
+          Complete Payment
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// 5.1. Order Placed Component (for existing mandate) with Animation
+const OrderPlacedComponent = ({ paymentData, onContinue }) => {
+  const [animationStep, setAnimationStep] = useState(0);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setAnimationStep(1), 500),   // Show circle
+      setTimeout(() => setAnimationStep(2), 1000),  // Show checkmark
+      setTimeout(() => setAnimationStep(3), 2000),  // Show content
+    ];
+
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center">
+        {/* Animated Success Icon */}
+        <div className="relative w-24 h-24 mx-auto mb-6">
+          {/* Outer circle animation */}
+          <div className={`absolute inset-0 w-24 h-24 bg-green-100 rounded-full transition-all duration-500 ${
+            animationStep >= 1 ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+          }`}>
+            {/* Checkmark animation */}
+            <div className={`w-full h-full flex items-center justify-center transition-all duration-500 delay-300 ${
+              animationStep >= 2 ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+            }`}>
+              <CheckCircle className="w-12 h-12 text-green-600" />
+            </div>
+          </div>
+          
+          {/* Ripple effects */}
+          {animationStep >= 2 && (
+            <>
+              <div className="absolute inset-0 w-24 h-24 bg-green-200 rounded-full animate-ping opacity-20"></div>
+              <div className="absolute inset-2 w-20 h-20 bg-green-300 rounded-full animate-ping opacity-30" style={{animationDelay: '0.2s'}}></div>
+            </>
+          )}
+        </div>
+
+        {/* Content with fade-in animation */}
+        <div className={`transition-all duration-500 ${
+          animationStep >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}>
+          <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+            Investment Order Placed Successfully!
+          </h3>
+          <p className="text-gray-600 mb-6">
+            Your lumpsum investment has been processed using your existing mandate. The payment will be debited automatically.
+          </p>
+        </div>
+      </div>
+
+      {/* Order Details */}
+      {animationStep >= 3 && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-6 animate-fade-in">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-green-900">Transaction ID:</span>
+              <span className="text-sm text-green-700 font-mono">{paymentData?.transactionId}</span>
+            </div>
+            {paymentData?.orderId && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-green-900">Order ID:</span>
+                <span className="text-sm text-green-700 font-mono">{paymentData.orderId}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-green-900">Status:</span>
+              <span className="inline-block px-2 py-1 bg-green-200 text-green-800 text-xs rounded-full">
+                Order Confirmed
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {animationStep >= 3 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 animate-fade-in">
+          <div className="flex items-start space-x-3">
+            <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <p className="text-blue-900 font-medium text-sm">What happens next?</p>
+              <ul className="text-blue-700 text-sm mt-2 space-y-1">
+                <li>• Payment will be processed automatically</li>
+                <li>• You'll receive confirmation via email and SMS</li>
+                <li>• Units will be allocated after payment clearance</li>
+                <li>• Investment confirmation will be sent within 1-2 business days</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {animationStep >= 3 && (
+        <div className="flex justify-center pt-4 animate-fade-in">
+          <Button
+            onClick={onContinue}
+            className="bg-blue-600 hover:bg-blue-700 px-12 py-3 rounded-full text-base font-medium"
+          >
+            Continue
+          </Button>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fade-in {
+          animation: fade-in 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 };
@@ -476,7 +574,7 @@ const PaymentURLComponent = ({ paymentData, onOpenPayment, loading }) => {
 // 6. Payment Status Component
 const PaymentStatusComponent = ({ loading, status, onRetry }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-center">
         <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
           loading ? 'bg-blue-100' : 
@@ -525,13 +623,15 @@ const PaymentStatusComponent = ({ loading, status, onRetry }) => {
       )}
 
       {!loading && status !== 'PAID' && (
-        <Button
-          onClick={onRetry}
-          variant="outline"
-          className="w-full"
-        >
-          Check Payment Status Again
-        </Button>
+        <div className="flex justify-center">
+          <Button
+            onClick={onRetry}
+            variant="outline"
+            className="px-8 py-2"
+          >
+            Check Payment Status Again
+          </Button>
+        </div>
       )}
     </div>
   );
@@ -540,7 +640,7 @@ const PaymentStatusComponent = ({ loading, status, onRetry }) => {
 // 7. Onboarding Incomplete Component
 const OnboardingIncompleteComponent = ({ onCompleteOnboarding }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-orange-100 rounded-full flex items-center justify-center">
           <AlertCircle className="w-8 h-8 text-orange-600" />
@@ -561,12 +661,14 @@ const OnboardingIncompleteComponent = ({ onCompleteOnboarding }) => {
         </p>
       </div>
 
-      <Button
-        onClick={onCompleteOnboarding}
-        className="w-full bg-orange-600 hover:bg-orange-700"
-      >
-        Complete Onboarding
-      </Button>
+      <div className="flex justify-center">
+        <Button
+          onClick={onCompleteOnboarding}
+          className="bg-orange-600 hover:bg-orange-700 px-12 py-3 rounded-full"
+        >
+          Complete Onboarding
+        </Button>
+      </div>
     </div>
   );
 };
@@ -792,6 +894,7 @@ const LumpsumTransaction = ({
       // Step 1: Submit folio form
       const folioFormBody = {
         formUrl: lumpsumResponse.newFolio.formUrl,
+        formId: lumpsumResponse.newFolio.formId,
         userTransactionId: userTransactionId, // Hardcoded as requested
         transactionId: transactionId
       };
@@ -831,8 +934,9 @@ const LumpsumTransaction = ({
         },
         body: JSON.stringify(paymentMethodsBody)
       });
-
+      
       const paymentMethodsData = await paymentMethodsResponse.json();
+      console.log('Payment Methods Response Data:', paymentMethodsData);
 
       if (!paymentMethodsResponse.ok || !paymentMethodsData.success) {
         throw new Error(paymentMethodsData.message || 'Failed to get payment methods');
@@ -967,16 +1071,18 @@ const LumpsumTransaction = ({
     try {
       // Determine if we're using existing folio or new folio
       const isExistingFolio = selectedFolio && selectedFolio.folioNumber;
+      const method = selectedPaymentMethod.availableMethods?.[0] || selectedPaymentMethod.methods?.[0];
+      const isExistingMandate = method?.auth === 'EXISTING_MANDATE';
       
       const paymentInitiationBody = {
-        type: isExistingFolio ? "EXISTING" : "SELECTEDPAYMENT",
+        type: isExistingFolio ? "EXISTING_LUMPSUM" : "SELECTEDPAYMENT_LUMPSUM",
         userId: user?.userId,
         transactionId: paymentMethodsData.transactionId,
         folioNumber: isExistingFolio ? selectedFolio.folioNumber : "1234567",
         paymentIp: "117.200.73.102",
         paymentMethod: {
-          mode: (selectedPaymentMethod.availableMethods?.[0] || selectedPaymentMethod.methods?.[0])?.mode || "UPI_AUTOPAY",
-          auth: (selectedPaymentMethod.availableMethods?.[0] || selectedPaymentMethod.methods?.[0])?.auth 
+          mode: method?.mode || "UPI_AUTOPAY",
+          auth: method?.auth
         }
       };
 
@@ -984,6 +1090,14 @@ const LumpsumTransaction = ({
       if (isExistingFolio) {
         paymentInitiationBody.messageId = paymentMethodsData.messageId;
         paymentInitiationBody.fulfillmentId = paymentMethodsData.fulfillmentId;
+      }
+
+      // Add mandate fields if payment method is existing mandate
+      if (isExistingMandate) {
+        paymentInitiationBody.paymentMethod.mandateIdentifier = method.mandateIdentifier;
+        paymentInitiationBody.paymentMethod.maskedBankAccount = method.maskedBankAccount;
+        paymentInitiationBody.paymentMethod.bankAccountName = method.bankAccountName;
+        paymentInitiationBody.paymentMethod.bankName = method.bankName;
       }
 
       console.log('Payment Initiation Body:', paymentInitiationBody);
@@ -1000,7 +1114,13 @@ const LumpsumTransaction = ({
 
       if (response.ok && data.success) {
         setPaymentInitiationData(data.data);
-        setCurrentStep('payment-url');
+        
+        // If existing mandate, show order placed instead of payment URL
+        if (isExistingMandate) {
+          setCurrentStep('order-placed');
+        } else {
+          setCurrentStep('payment-url');
+        }
       } else {
         throw new Error(data.message || 'Failed to initiate payment');
       }
@@ -1018,6 +1138,11 @@ const LumpsumTransaction = ({
       setCurrentStep('payment-status');
       startPaymentStatusCheck();
     }
+  };
+
+  // Handle Order Placed Continue
+  const handleOrderPlacedContinue = () => {
+    handleModalClose();
   };
 
   // Step 8: Start Payment Status Check
@@ -1091,10 +1216,10 @@ const LumpsumTransaction = ({
   if (lumpsumFulfillments.length === 0) {
     return (
       <div 
-        className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
         onClick={handleBackdropClick}
       >
-        <div className="bg-white shadow-2xl w-full max-w-md p-6 rounded-lg text-center">
+        <div className="bg-white shadow-2xl w-full max-w-md p-6 rounded-xl text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Lumpsum Not Available</h3>
           <p className="text-gray-600 mb-4">
@@ -1110,11 +1235,11 @@ const LumpsumTransaction = ({
 
   return (
     <div 
-      className="fixed inset-0 bg-white/50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-white/70 z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
       <div 
-        className="bg-white shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col border"
+        className="bg-white shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col border border-blue-200 "
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Fund Info */}
@@ -1123,17 +1248,8 @@ const LumpsumTransaction = ({
             <FundIcon fund={fundData} />
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-semibold text-gray-900">{fundData?.name || fundData?.fundName}</h1>
-              <p className="text-sm text-gray-600">
-                {fundData?.creator} • {fundData?.category || 'Mixed'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Lumpsum investment available
-                {selectedFolio && (
-                  <span className="ml-2 text-blue-600">
-                    • Using Folio: {selectedFolio.folioNumber}
-                  </span>
-                )}
-              </p>
+             
+              
             </div>
           </div>
           
@@ -1170,7 +1286,7 @@ const LumpsumTransaction = ({
           <div className="flex-1 overflow-y-auto p-6">
             {/* Error Messages */}
             {errors.api && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded">
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
                 <div className="flex items-center">
                   <AlertCircle className="h-5 w-5 text-red-400 mr-3" />
                   <p className="text-sm font-medium text-red-800">{errors.api}</p>
@@ -1199,7 +1315,6 @@ const LumpsumTransaction = ({
               <FolioSelectionComponent
                 lumpsumResponse={lumpsumResponse}
                 onCreateFolio={handleFolioCreation}
-                onSelectExistingFolio={() => {}}
                 loading={loading}
                 errors={errors}
               />
@@ -1229,6 +1344,13 @@ const LumpsumTransaction = ({
                 paymentData={paymentInitiationData}
                 onOpenPayment={handleOpenPayment}
                 loading={loading}
+              />
+            )}
+
+            {currentStep === 'order-placed' && (
+              <OrderPlacedComponent
+                paymentData={paymentInitiationData}
+                onContinue={handleOrderPlacedContinue}
               />
             )}
 

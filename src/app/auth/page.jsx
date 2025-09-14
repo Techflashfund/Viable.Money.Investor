@@ -1,11 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Circle, X, ChevronDown, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { Circle, X, ChevronDown, Check, AlertCircle, RefreshCw, TrendingUp, Shield, Zap, Eye, EyeOff } from 'lucide-react';
 import useAuthStore from '@/store/auth';
 import createApiService from '@/services/api';
 
@@ -37,11 +37,13 @@ const AuthPage = () => {
     phone: '',
     email: '',
     identifier: '',
-    otp: '',
+    otp: ['', '', '', '', '', ''],
     pin: '',
     confirmPin: '',
     captcha: ''
   });
+  const [showPin, setShowPin] = useState(false);
+  const [showConfirmPin, setShowConfirmPin] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -50,6 +52,9 @@ const AuthPage = () => {
   const [usernameAvailable, setUsernameAvailable] = useState(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+
+  // OTP input refs
+  const otpRefs = useRef([]);
 
   // Function definitions
   const handleLogout = () => {
@@ -210,7 +215,7 @@ const AuthPage = () => {
       phone: '',
       email: '',
       identifier: '',
-      otp: '',
+      otp: ['', '', '', '', '', ''],
       pin: '',
       confirmPin: '',
       captcha: ''
@@ -277,6 +282,31 @@ const AuthPage = () => {
     }
   };
 
+  // Handle OTP input changes
+  const handleOtpChange = (index, value) => {
+    if (value.length > 1) return;
+    
+    const newOtp = [...formData.otp];
+    newOtp[index] = value;
+    setFormData(prev => ({ ...prev, otp: newOtp }));
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      otpRefs.current[index + 1]?.focus();
+    }
+
+    if (error) {
+      setError('');
+    }
+  };
+
+  // Handle OTP backspace
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !formData.otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
   const refreshCaptcha = () => {
     generateCaptcha();
     setFormData(prev => ({ ...prev, captcha: '' }));
@@ -316,7 +346,8 @@ const AuthPage = () => {
   };
 
   const handleVerifyOTP = async () => {
-    if (formData.otp.length !== 6) {
+    const otpString = formData.otp.join('');
+    if (otpString.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
       return;
     }
@@ -325,7 +356,7 @@ const AuthPage = () => {
     setError('');
     
     try {
-      const response = await apiService.verifyOTP(formData.email, formData.otp);
+      const response = await apiService.verifyOTP(formData.email, otpString);
       handleSuccess(response.message || 'OTP verified successfully');
       setCurrentStep(3);
     } catch (error) {
@@ -402,7 +433,8 @@ const AuthPage = () => {
         router.push('/');
         
       } else {
-        const response = await apiService.loginVerify(formData.identifier, formData.otp, formData.pin);
+        const otpString = formData.otp.join('');
+        const response = await apiService.loginVerify(formData.identifier, otpString, formData.pin);
         setAuth(response.data, response.token);
         updateTransactionId(response.data.transactionId);
         await checkOnboardingStatus(response.data.transactionId);
@@ -422,14 +454,14 @@ const AuthPage = () => {
     if (mode === 'signup') {
       switch (currentStep) {
         case 1: return 'Create Your Account';
-        case 2: return 'Verify Your Email';
+        case 2: return 'Verify';
         case 3: return 'Secure Your Account';
         default: return '';
       }
     } else {
       switch (currentStep) {
         case 1: return 'Welcome Back';
-        case 2: return 'Verify Your Identity';
+        case 2: return 'Verify';
         case 3: return 'Enter Your PIN';
         default: return '';
       }
@@ -440,26 +472,69 @@ const AuthPage = () => {
     if (mode === 'signup') {
       switch (currentStep) {
         case 1: return 'Join thousands of investors building wealth through mutual funds';
-        case 2: return `Enter the OTP sent to ${formData.email}`;
+        case 2: return 'Your code was sent to you via email';
         case 3: return 'Set a 4-digit PIN for secure account access';
         default: return '';
       }
     } else {
       switch (currentStep) {
         case 1: return 'Sign in to access your investment portfolio';
-        case 2: return `Enter the OTP sent to your registered email`;
+        case 2: return 'Your code was sent to you via email';
         case 3: return 'Enter your 4-digit security PIN';
         default: return '';
       }
     }
   };
 
+  // Modern Success/Error Message Components
+  const ModernSuccessMessage = ({ message, onDismiss }) => (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-green-50 to-emerald-50"></div>
+      <div className="relative bg-white/60 backdrop-blur border border-green-200/50 p-3 shadow-sm">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-6 h-6 bg-green-100 flex items-center justify-center">
+              <Check className="w-3 h-3 text-green-600" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-green-800">{message}</p>
+          </div>
+          <button onClick={onDismiss} className="text-green-600 hover:text-green-800 transition-colors">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const ModernErrorMessage = ({ message, onDismiss }) => (
+    <div className="relative overflow-hidden">
+      <div className="absolute inset-0 bg-gradient-to-r from-red-50 to-rose-50"></div>
+      <div className="relative bg-white/60 backdrop-blur border border-red-200/50 p-3 shadow-sm">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <div className="w-6 h-6 bg-red-100 flex items-center justify-center">
+              <AlertCircle className="w-3 h-3 text-red-600" />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-red-800">{message}</p>
+          </div>
+          <button onClick={onDismiss} className="text-red-600 hover:text-red-800 transition-colors">
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col lg:flex-row">
-      {/* Left Section - Information */}
-      <div className={`flex-1 flex flex-col relative transition-all duration-500 min-h-screen lg:min-h-0 ${showMobileForm ? 'lg:flex hidden' : 'flex'}`}>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col lg:flex-row overflow-hidden">
+      {/* Left Section - Static Information */}
+      <div className={`lg:w-1/2 flex flex-col relative min-h-screen lg:min-h-0 ${showMobileForm ? 'lg:flex hidden' : 'flex'}`}>
         {/* Header */}
-        <div className="p-6 lg:p-8">
+        <div className="p-6 lg:p-8 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img 
@@ -470,7 +545,7 @@ const AuthPage = () => {
             </div>
             
             {isAuthenticated && user && (
-              <div className="bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm">
+              <div className="bg-white/80 backdrop-blur border border-gray-200 px-4 py-2 shadow-sm">
                 <div className="flex items-center space-x-3">
                   <div className="text-sm">
                     <p className="font-medium text-gray-800">
@@ -482,7 +557,7 @@ const AuthPage = () => {
                     onClick={handleLogout}
                     variant="outline"
                     size="sm"
-                    className="text-xs px-3 py-1"
+                    className="text-xs px-3 py-1 rounded-full"
                   >
                     Logout
                   </Button>
@@ -492,27 +567,41 @@ const AuthPage = () => {
           </div>
         </div>
 
-        {/* Main Content */}
+        {/* Main Content - Static positioned */}
         <div className="flex-1 flex flex-col justify-center px-6 lg:px-12 pb-8">
           <div className="max-w-lg">
             <h1 className="text-4xl lg:text-5xl font-medium text-gray-900 mb-6 leading-tight">
-              Smart Investing
-              <span className="text-blue-600 block">Made Simple</span>
+              Wealth Building
+              <span className="text-blue-600 block">Simplified</span>
             </h1>
             
             <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-              Start your investment journey with India's leading mutual fund platform. 
-              Discover, invest, and track your portfolio with personalized recommendations 
-              and real-time market insights.
+              Experience seamless mutual fund investing with Unique insights, 
+               and professional portfolio management. 
+              Build your financial future with confidence.
             </p>
 
-            
+            {/* Feature Cards */}
+            <div className="grid grid-cols-1 gap-4 mb-8">
+              
+              
+              
+              <div className="flex items-center space-x-3 p-4 bg-white/50 backdrop-blur border border-gray-200/50">
+                <div className="w-10 h-10 bg-purple-100 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Instant Transactions</h3>
+                  <p className="text-sm text-gray-600">Lightning-fast fund transfers</p>
+                </div>
+              </div>
+            </div>
 
             {/* Mobile CTA */}
             <div className="lg:hidden">
               <Button
                 onClick={() => setShowMobileForm(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-medium rounded-lg shadow-lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-medium rounded-full shadow-lg"
                 size="lg"
               >
                 Get Started
@@ -523,11 +612,11 @@ const AuthPage = () => {
         </div>
       </div>
 
-      {/* Right Section - Form */}
-      <div className={`flex-1 flex items-center justify-center p-4 lg:p-8 transition-all duration-500 ${
+      {/* Right Section - Compact Form */}
+      <div className={`lg:w-1/2 flex items-center justify-center p-4 lg:p-8 transition-all duration-500 ${
         showMobileForm ? 'flex' : 'hidden lg:flex'
       }`}>
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-sm">
           {/* Mobile close button */}
           {showMobileForm && (
             <div className="lg:hidden flex justify-end mb-4">
@@ -535,19 +624,20 @@ const AuthPage = () => {
                 onClick={() => setShowMobileForm(false)}
                 variant="outline"
                 size="sm"
-                className="p-2"
+                className="p-2 rounded-full"
               >
                 <X className="w-4 h-4" />
               </Button>
             </div>
           )}
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-xl p-8 space-y-6">
+          {/* Form Container - Sharp edges, compact */}
+          <div className={`space-y-4 ${showMobileForm ? 'lg:bg-white lg:border lg:border-gray-200 lg:shadow-xl lg:p-6' : 'bg-white border border-gray-200 shadow-xl p-6'}`}>
             {/* Mode Toggle */}
-            <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+            <div className="flex bg-gray-100 p-1 mb-4">
               <button
                 onClick={() => switchMode('login')}
-                className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-full ${
                   mode === 'login'
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
@@ -557,7 +647,7 @@ const AuthPage = () => {
               </button>
               <button
                 onClick={() => switchMode('signup')}
-                className={`flex-1 py-3 px-4 text-sm font-medium rounded-md transition-all ${
+                className={`flex-1 py-2 px-3 text-sm font-medium transition-all rounded-full ${
                   mode === 'signup'
                     ? 'bg-white text-blue-600 shadow-sm'
                     : 'text-gray-600 hover:text-gray-800'
@@ -568,10 +658,10 @@ const AuthPage = () => {
             </div>
 
             {/* Progress Indicator */}
-            <div className="flex items-center justify-center mb-6">
+            <div className="flex items-center justify-center mb-4">
               {Array.from({ length: getStepCount() }, (_, i) => i + 1).map((step) => (
                 <React.Fragment key={step}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                     currentStep >= step 
                       ? 'bg-blue-600 text-white' 
                       : 'bg-gray-200 text-gray-500'
@@ -579,7 +669,7 @@ const AuthPage = () => {
                     {step}
                   </div>
                   {step < getStepCount() && (
-                    <div className={`w-12 h-1 mx-2 rounded-full ${
+                    <div className={`w-8 h-0.5 mx-1 ${
                       currentStep > step ? 'bg-blue-600' : 'bg-gray-200'
                     }`} />
                   )}
@@ -587,42 +677,26 @@ const AuthPage = () => {
               ))}
             </div>
 
-            {/* Error/Success Messages */}
+            {/* Modern Error/Success Messages */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-red-800">{error}</p>
-                </div>
-                <button onClick={dismissError} className="text-red-600 hover:text-red-800">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <ModernErrorMessage message={error} onDismiss={dismissError} />
             )}
 
             {success && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start space-x-3">
-                <Check className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-green-800">{success}</p>
-                </div>
-                <button onClick={dismissSuccess} className="text-green-600 hover:text-green-800">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              <ModernSuccessMessage message={success} onDismiss={dismissSuccess} />
             )}
 
             {currentStep === 1 && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-medium text-gray-900">{getStepTitle()}</h2>
-                  <p className="text-gray-600 mt-2">{getStepSubtitle()}</p>
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-medium text-gray-900">{getStepTitle()}</h2>
+                  <p className="text-gray-600 mt-1 text-sm">{getStepSubtitle()}</p>
                 </div>
 
                 {mode === 'signup' && (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="username" className="text-sm font-medium text-gray-700 font-sans">
+                    <div className="space-y-1">
+                      <Label htmlFor="username" className="text-sm font-medium text-gray-900">
                         Username
                       </Label>
                       <div className="relative">
@@ -632,7 +706,7 @@ const AuthPage = () => {
                           value={formData.username}
                           onChange={(e) => handleInputChange('username', e.target.value)}
                           placeholder="johndoe123"
-                          className={`h-12 pr-10 font-sans ${
+                          className={`h-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 ${
                             usernameAvailable === true ? 'border-green-400' : 
                             usernameAvailable === false ? 'border-red-400' : ''
                           }`}
@@ -647,178 +721,87 @@ const AuthPage = () => {
                           ) : null}
                         </div>
                       </div>
-                      {validationErrors.username && (
-                        <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                            <p className="text-xs text-red-600 font-sans">{validationErrors.username}</p>
-                          </div>
-                          <button onClick={() => dismissValidationError('username')} className="text-red-600">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                      {usernameAvailable === false && (
-                        <p className="text-xs text-red-600 font-sans">Username is already taken</p>
-                      )}
-                      {usernameAvailable === true && (
-                        <p className="text-xs text-green-600 font-sans">Username is available</p>
-                      )}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
+                    <div className="space-y-1">
+                      <Label htmlFor="phone" className="text-sm font-medium text-gray-900">
                         Phone Number
                       </Label>
-                      <div className="relative">
-                        <Input
-                          id="phone"
-                          type="tel"
-                          value={formData.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
-                          placeholder="9876543210"
-                          className="h-12 pr-10"
-                        />
-                        {formData.phone && !validationErrors.phone && /^[6-9]\d{9}$/.test(formData.phone) && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Check className="w-4 h-4 text-green-600" />
-                          </div>
-                        )}
-                      </div>
-                      {validationErrors.phone && (
-                        <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                            <p className="text-xs text-red-600">{validationErrors.phone}</p>
-                          </div>
-                          <button onClick={() => dismissValidationError('phone')} className="text-red-600">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                      <p className="text-xs text-gray-500">Enter 10-digit mobile number starting with 6-9</p>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                        placeholder="9876543210"
+                        className="h-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500"
+                      />
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                    <div className="space-y-1">
+                      <Label htmlFor="email" className="text-sm font-medium text-gray-900">
                         Email Address
                       </Label>
-                      <div className="relative">
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
-                          placeholder="your@email.com"
-                          className="h-12 pr-10"
-                        />
-                        {formData.email && !validationErrors.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) && (
-                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                            <Check className="w-4 h-4 text-green-600" />
-                          </div>
-                        )}
-                      </div>
-                      {validationErrors.email && (
-                        <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                            <p className="text-xs text-red-600">{validationErrors.email}</p>
-                          </div>
-                          <button onClick={() => dismissValidationError('email')} className="text-red-600">
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        placeholder="your@email.com"
+                        className="h-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500"
+                      />
                     </div>
                   </>
                 )}
 
                 {mode === 'login' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="identifier" className="text-sm font-medium text-gray-700">
+                  <div className="space-y-1">
+                    <Label htmlFor="identifier" className="text-sm font-medium text-gray-900">
                       Username, Email or Phone
                     </Label>
-                    <div className="relative">
-                      <Input
-                        id="identifier"
-                        type="text"
-                        value={formData.identifier}
-                        onChange={(e) => handleInputChange('identifier', e.target.value)}
-                        placeholder="johndoe123 or your@email.com or 9876543210"
-                        className="h-12 pr-10"
-                      />
-                      {formData.identifier && formData.identifier.trim().length > 0 && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <Check className="w-4 h-4 text-green-600" />
-                        </div>
-                      )}
-                    </div>
-                    {validationErrors.identifier && (
-                      <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <AlertCircle className="w-4 h-4 text-red-600" />
-                          <p className="text-xs text-red-600">{validationErrors.identifier}</p>
-                        </div>
-                        <button onClick={() => dismissValidationError('identifier')} className="text-red-600">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
-                    <p className="text-xs text-gray-500">Enter your username, email address, or phone number</p>
+                    <Input
+                      id="identifier"
+                      type="text"
+                      value={formData.identifier}
+                      onChange={(e) => handleInputChange('identifier', e.target.value)}
+                      placeholder="johndoe123 or your@email.com"
+                      className="h-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500"
+                    />
                   </div>
                 )}
 
-                {/* Captcha */}
-                <div className="space-y-3 p-4 bg-gray-50 rounded-lg border">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Security Verification
+                {/* Compact Captcha */}
+                <div className="space-y-2 p-3 bg-gray-50 border border-gray-200">
+                  <Label className="text-sm font-medium text-gray-900 flex items-center space-x-2">
+                    <Shield className="w-3 h-3" />
+                    <span>Security Verification</span>
                   </Label>
-                  <div className="flex flex-col space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="bg-white px-4 py-3 border-2 border-dashed border-gray-300 rounded font-mono text-lg font-bold text-gray-800 min-w-24 text-center">
-                        {captchaQuestion.question} = ?
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={refreshCaptcha}
-                        variant="outline"
-                        size="sm"
-                        className="p-2"
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </Button>
+                  <div className="flex items-center space-x-2">
+                    <div className="bg-white px-3 py-2 border border-gray-300 font-mono text-sm font-bold text-gray-800 flex-1 text-center">
+                      {captchaQuestion.question} = ?
                     </div>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        value={formData.captcha}
-                        onChange={(e) => handleInputChange('captcha', e.target.value)}
-                        placeholder="Enter answer"
-                        className={`h-12 text-center pr-10 ${
-                          formData.captcha 
-                            ? captchaVerified 
-                              ? 'border-green-400 bg-green-50 text-green-700' 
-                              : 'border-red-400 bg-red-50 text-red-700'
-                            : ''
-                        }`}
-                      />
-                      {formData.captcha && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          {captchaVerified ? (
-                            <Check className="w-4 h-4 text-green-600" />
-                          ) : (
-                            <X className="w-4 h-4 text-red-600" />
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    <Button
+                      type="button"
+                      onClick={refreshCaptcha}
+                      variant="outline"
+                      size="sm"
+                      className="p-2 rounded-full"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                    </Button>
                   </div>
-                  {formData.captcha && !captchaVerified && (
-                    <p className="text-xs text-red-600">Incorrect answer. Please try again.</p>
-                  )}
-                  {captchaVerified && (
-                    <p className="text-xs text-green-600">Verification successful</p>
-                  )}
+                  <Input
+                    type="number"
+                    value={formData.captcha}
+                    onChange={(e) => handleInputChange('captcha', e.target.value)}
+                    placeholder="Enter answer"
+                    className={`h-8 text-center text-sm ${
+                      formData.captcha 
+                        ? captchaVerified 
+                          ? 'border-green-400 bg-green-50' 
+                          : 'border-red-400 bg-red-50'
+                        : 'bg-gray-50 border-gray-200'
+                    }`}
+                  />
                 </div>
 
                 <Button
@@ -828,154 +811,126 @@ const AuthPage = () => {
                       ? (!formData.username || !formData.phone || !formData.email || !captchaVerified || usernameAvailable === false || loading)
                       : (!formData.identifier?.trim() || !captchaVerified || loading)
                   }
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-medium"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 text-sm font-medium rounded-full shadow-lg"
                   size="lg"
                 >
-                  {loading ? 'Sending OTP...' : 'Send OTP'}
+                  {loading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Sending OTP...</span>
+                    </div>
+                  ) : (
+                    'Send OTP'
+                  )}
                 </Button>
               </div>
             )}
 
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{getStepTitle()}</h2>
-                  <p className="text-gray-600 mt-2">{getStepSubtitle()}</p>
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">{getStepTitle()}</h2>
+                  <p className="text-gray-600 mt-1 text-sm">{getStepSubtitle()}</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="otp" className="text-sm font-medium text-gray-700">
-                    Enter OTP
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="otp"
+                {/* Individual OTP Inputs */}
+                <div className="flex justify-center space-x-2 mb-4">
+                  {formData.otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={el => otpRefs.current[index] = el}
                       type="text"
-                      value={formData.otp}
-                      onChange={(e) => handleInputChange('otp', e.target.value)}
-                      placeholder="123456"
-                      maxLength="6"
-                      className="h-12 text-center text-xl tracking-widest pr-10"
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      className="w-10 h-12 text-center text-lg font-medium border border-gray-300 bg-gray-50 focus:bg-white focus:border-blue-500 focus:outline-none"
+                      maxLength="1"
                     />
-                    {formData.otp && formData.otp.length === 6 && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <Check className="w-4 h-4 text-green-600" />
-                      </div>
-                    )}
-                  </div>
+                  ))}
                 </div>
 
                 <Button
                   onClick={mode === 'signup' ? handleVerifyOTP : () => setCurrentStep(3)}
-                  disabled={formData.otp.length !== 6 || loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-medium"
+                  disabled={formData.otp.join('').length !== 6 || loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 text-sm font-medium rounded-full shadow-lg"
                   size="lg"
                 >
-                  {loading ? 'Verifying...' : 'Verify OTP'}
+                  {loading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Verifying...</span>
+                    </div>
+                  ) : (
+                    'Verify'
+                  )}
                 </Button>
 
-                <div className="flex space-x-3">
-                  <Button
+                <div className="text-center">
+                  <button
                     onClick={mode === 'signup' ? handleResendOTP : handleResendLoginOTP}
                     disabled={loading}
-                    variant="outline"
-                    className="flex-1 h-12 text-base font-medium"
-                    size="lg"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
                   >
-                    {loading ? 'Sending...' : 'Resend OTP'}
-                  </Button>
-                  
-                  <Button
-                    onClick={() => {
-                      setCurrentStep(1);
-                      generateCaptcha();
-                      setFormData(prev => ({ ...prev, otp: '', captcha: '' }));
-                      setCaptchaVerified(false);
-                      setError('');
-                      setSuccess('');
-                    }}
-                    variant="outline"
-                    className="flex-1 h-12 text-base font-medium"
-                    size="lg"
-                  >
-                    Back
-                  </Button>
+                    Didn't receive code? Request again
+                  </button>
                 </div>
               </div>
             )}
 
             {currentStep === 3 && (
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">{getStepTitle()}</h2>
-                  <p className="text-gray-600 mt-2">{getStepSubtitle()}</p>
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">{getStepTitle()}</h2>
+                  <p className="text-gray-600 mt-1 text-sm">{getStepSubtitle()}</p>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="pin" className="text-sm font-medium text-gray-700">
-                    4-Digit PIN
+                <div className="space-y-1">
+                  <Label htmlFor="pin" className="text-sm font-medium text-gray-900">
+                     Password
                   </Label>
                   <div className="relative">
                     <Input
                       id="pin"
-                      type="password"
+                      type={showPin ? "text" : "password"}
                       value={formData.pin}
                       onChange={(e) => handleInputChange('pin', e.target.value)}
                       placeholder="••••"
                       maxLength="4"
-                      className="h-12 text-center text-xl tracking-widest pr-10"
+                      className="h-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 pr-10"
                     />
-                    {formData.pin && formData.pin.length === 4 && !validationErrors.pin && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <Check className="w-4 h-4 text-green-600" />
-                      </div>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPin(!showPin)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                  {validationErrors.pin && (
-                    <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="w-4 h-4 text-red-600" />
-                        <p className="text-xs text-red-600">{validationErrors.pin}</p>
-                      </div>
-                      <button onClick={() => dismissValidationError('pin')} className="text-red-600">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
                 </div>
 
                 {mode === 'signup' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPin" className="text-sm font-medium text-gray-700">
+                  <div className="space-y-1">
+                    <Label htmlFor="confirmPin" className="text-sm font-medium text-gray-900">
                       Confirm PIN
                     </Label>
                     <div className="relative">
                       <Input
                         id="confirmPin"
-                        type="password"
+                        type={showConfirmPin ? "text" : "password"}
                         value={formData.confirmPin}
                         onChange={(e) => handleInputChange('confirmPin', e.target.value)}
                         placeholder="••••"
                         maxLength="4"
-                        className="h-12 text-center text-xl tracking-widest pr-10"
+                        className="h-10 bg-gray-50 border-gray-200 focus:bg-white focus:border-blue-500 pr-10"
                       />
-                      {formData.confirmPin && formData.confirmPin.length === 4 && formData.pin === formData.confirmPin && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <Check className="w-4 h-4 text-green-600" />
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPin(!showConfirmPin)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showConfirmPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
-                    {validationErrors.confirmPin && (
-                      <div className="bg-red-50 border border-red-200 rounded p-3 flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <AlertCircle className="w-4 h-4 text-red-600" />
-                          <p className="text-xs text-red-600">{validationErrors.confirmPin}</p>
-                        </div>
-                        <button onClick={() => dismissValidationError('confirmPin')} className="text-red-600">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 )}
 
@@ -986,28 +941,18 @@ const AuthPage = () => {
                       ? (formData.pin.length !== 4 || formData.confirmPin.length !== 4 || loading)
                       : (formData.pin.length !== 4 || loading)
                   }
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-medium"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white h-10 text-sm font-medium rounded-full shadow-lg"
                   size="lg"
                 >
-                  {loading 
-                    ? (mode === 'signup' ? 'Creating Account...' : 'Signing In...')
-                    : (mode === 'signup' ? 'Create Account' : 'Access Dashboard')
-                  }
-                </Button>
-
-                {mode === 'signup' && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex items-start space-x-3">
-                      <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm text-blue-800">
-                          <strong>Security Note:</strong> Your PIN will be used to access your account and authorize transactions. 
-                          Keep it secure and don't share it with anyone.
-                        </p>
-                      </div>
+                  {loading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>{mode === 'signup' ? 'Creating Account...' : 'Signing In...'}</span>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    mode === 'signup' ? 'Create Account' : 'Access Dashboard'
+                  )}
+                </Button>
               </div>
             )}
           </div>
