@@ -166,7 +166,7 @@ const UserTopNav = () => {
   }, [showSearchPopup]);
   
   // Get user data from auth store
-  const { user, onboardingstatus, clearAuth } = useAuthStore();
+  const { user, onboardingstatus, clearAuth,transactionId } = useAuthStore();
   
   const userDisplayInfo = useMemo(() => {
     if (!user) {
@@ -272,7 +272,7 @@ const UserTopNav = () => {
   }, [clearAuth, router]);
 
   const handleOnboardingClick = useCallback(() => {
-    router.push('/onboarding');
+     router.push(`/onboarding/${transactionId}`);
   }, [router]);
 
   const handleCloseBanner = useCallback(() => {

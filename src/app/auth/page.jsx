@@ -430,7 +430,7 @@ const AuthPage = () => {
         setAuth(response.data, response.token);
         updateTransactionId(response.data.transactionId);
         await checkOnboardingStatus(response.data.transactionId);
-        router.push('/');
+        router.push('/dashboard');
         
       } else {
         const otpString = formData.otp.join('');
@@ -438,7 +438,7 @@ const AuthPage = () => {
         setAuth(response.data, response.token);
         updateTransactionId(response.data.transactionId);
         await checkOnboardingStatus(response.data.transactionId);
-        router.push('/');
+        router.push('/dashboard');
       }
     } catch (error) {
       handleError(error);
