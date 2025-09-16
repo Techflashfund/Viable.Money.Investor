@@ -813,7 +813,7 @@ const Portfolio = () => {
       }
 
       const result = await response.json();
-      
+      console.log('result',result)
       if (result.success) {
         setPortfolioData(result.data);
         
