@@ -18,7 +18,9 @@ import {
   AlertCircle,
   X,
   Eye,
-  Clock
+  ShoppingCart,
+  GitCompare,
+  Clock,CreditCard
 } from 'lucide-react';
 import useAuthStore from '@/store/auth';
 import { useRouter } from 'next/navigation';
@@ -220,120 +222,101 @@ const SubNavigation = ({ activeSubView, setActiveSubView, subMenuItems, isTransi
   );
 };
 
-// Bottom Quick Actions Component
+
+
+
+
+
 const BottomQuickActions = () => {
   const router = useRouter();
 
+  const quickActions = [
+    {
+      title: "Start New SIP",
+      description: "Starting from ₹500 per month",
+      buttonText: "Start SIP",
+      route: "/dashboard/explore"
+    },
+    {
+      title: "Lumpsum Investment", 
+      description: "Make a one-time investment",
+      buttonText: "Invest Now",
+      route: "/dashboard/explore"
+    },
+    {
+      title: "View Cart",
+      description: "Review selected funds before investing",
+      buttonText: "View Cart", 
+      route: "/dashboard/cart"
+    },
+    {
+      title: "Compare Funds",
+      description: "Compare performance of mutual funds",
+      buttonText: "Compare Now",
+      route: "/dashboard/compare"
+    }
+  ];
+
   return (
-    <div className="w-full border-t border-blue-200/40 mt-8 relative z-0">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Quick Actions</h2>
-          <p className="text-sm text-gray-600 mt-1">Start your investment journey</p>
+    <section className="w-full border-t border-blue-200/40 mt-8" role="region" aria-label="Quick Actions">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Quick Actions</h2>
+          <p className="text-gray-600">Start your investment journey with these simple steps</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start space-x-4 lg:space-x-5">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Start New SIP</h4>
-                <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Begin systematic investing with as little as ₹500 per month.</p>
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
+        {/* Actions Grid */}
+        <div className="bg-white border-1 border-blue-400/50 transition-all duration-300 overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {quickActions.map((action, index) => {
+              const isNotFirst = index > 0;
+              
+              return (
+                <div 
+                  key={action.title}
+                  className={`
+                    relative p-5 flex flex-col min-h-[120px] text-center
+                    border-b sm:border-b-0 last:border-b-0
+                    ${isNotFirst ? 'sm:border-l border-blue-200/60' : ''}
+                    hover:bg-blue-50/30 transition-colors duration-200
+                    group
+                  `}
                 >
-                  Start SIP
-                </Button>
-              </div>
-            </div>
+                  {/* Content */}
+                  <div className="flex-1 flex flex-col justify-center">
+                    <h3 className="text-base font-semibold text-gray-900 mb-1 group-hover:text-blue-900 transition-colors">
+                      {action.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                      {action.description}
+                    </p>
+                  </div>
+                  
+                  {/* Action Button */}
+                  <div className="flex justify-center">
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-5 rounded-full transition-all duration-200 hover:shadow-lg hover:scale-105 active:scale-95"
+                      onClick={() => router.push(action.route)}
+                      aria-label={`${action.buttonText} - ${action.description}`}
+                    >
+                      {action.buttonText}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-
-          <div className="bg-white border border-blue-300 p-4 lg:p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-start space-x-4 lg:space-x-5">
-              <div className="w-10 h-10 lg:w-12 lg:h-12 flex border border-blue-300 rounded-full items-center justify-center flex-shrink-0">
-                <Banknote className="w-5 h-5 lg:w-6 lg:h-6 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm lg:text-base font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
-                <p className="text-xs lg:text-sm text-gray-600 mb-3 lg:mb-4 leading-relaxed">Make a one-time investment in your favorite mutual funds.</p>
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 px-4 rounded-3xl transition-colors relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
-                >
-                  Invest Now
-                </Button>
-              </div>
-            </div>
-          </div>
+        </div>
+        
+        {/* Optional Help Text */}
+        <div className="mt-4 text-center">
+          <p className="text-xs text-gray-500">
+            Need help? <button className="text-blue-600 hover:text-blue-700 underline font-medium">Contact our support team</button>
+          </p>
         </div>
       </div>
-    </div>
-  );
-};
-
-// Mobile Quick Actions Component
-const MobileQuickActions = () => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const router = useRouter();
-
-  return (
-    <div className="md:hidden bg-blue-50/30 border-t border-blue-200/40 relative z-0">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-3 py-3 flex items-center justify-between text-left"
-      >
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Quick Actions</h3>
-          <p className="text-xs text-gray-600">Start investing now</p>
-        </div>
-        {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
-      </button>
-      
-      {isExpanded && (
-        <div className="px-3 pb-3 space-y-2">
-          <div className="bg-white border border-blue-200 p-3 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <Calendar className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900 mb-1">Start New SIP</h4>
-                <p className="text-xs text-gray-600 mb-2">Begin with ₹500/month</p>
-                <Button 
-                  size="sm"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
-                >
-                  Start SIP
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border border-blue-200 p-3 rounded-lg">
-            <div className="flex items-start space-x-3">
-              <div className="w-8 h-8 border border-blue-300 rounded-full flex items-center justify-center flex-shrink-0">
-                <Banknote className="w-4 h-4 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900 mb-1">Lumpsum Investment</h4>
-                <p className="text-xs text-gray-600 mb-2">One-time investment</p>
-                <Button 
-                  size="sm"
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs py-1.5 px-3 rounded-full relative z-10"
-                  onClick={() => router.push('/dashboard/explore')}
-                >
-                  Invest Now
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </section>
   );
 };
 
@@ -426,7 +409,7 @@ const PortfolioOverview = ({ portfolioData, navData, loading, error, onRefresh }
   }
 
   return (
-    <div className="w-full max-w-full mt-0 lg:mt-3.5">
+    <div className="w-full max-w-full mt-3.5">
       {/* Portfolio Summary Cards - Full Width */}
       <div className="backdrop-blur-lg border-1 border-blue-400/50 mb-4 md:mb-6 lg:mb-8 relative mx-2 md:mx-4 lg:mx-8">
         <div className="absolute -top-2 md:-top-3 left-2 md:left-4 lg:left-8 bg-blue-50 px-2 md:px-4 py-0.5 md:py-1 text-xs md:text-sm font-medium text-gray-700 border border-blue-400/50 rounded-full shadow-sm z-10">
@@ -940,8 +923,7 @@ const Portfolio = () => {
             </div>
           )}
           
-          {/* Mobile Quick Actions */}
-          <MobileQuickActions />
+         
 
           {/* Bottom Quick Actions for Desktop */}
           <BottomQuickActions />

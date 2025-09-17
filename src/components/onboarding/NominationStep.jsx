@@ -1,56 +1,33 @@
-'use client';
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent } from '@/components/ui/card';
-import { CheckCircle, Loader2, AlertCircle, Plus, X } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Plus, X } from 'lucide-react';
 
-const NominationStep = ({ formData, onSubmit, loading, errors, bankVerificationStatus }) => {
-  const [data, setData] = useState({
-    skipNomination: 'no',
-    displaySetting: 'show_all_nominee_names',
-    nominees: [{
-      name: '',
-      relationship: '',
-      dob: '',
-      idType: 'pan',
-      idNumber: '',
-      phone: '',
-      email: '',
-      address: {
-        line: '',
-        pincode: '',
-        country: 'IN'
-      },
-      allocationPercentage: 100,
-      guardian: {
-        name: '',
-        idType: '',
-        idNumber: '',
-        phone: '',
-        email: '',
-        address: {
-          line: '',
-          pincode: '',
-          country: 'IN'
-        }
-      }
-    }],
-    ...formData?.nominationInfo
-  });
+const NominationStep = ({ 
+  formData, 
+  setFormData, 
+  transactionId, 
+  onNext, 
+  onPrevious,
+  needsSignature,
+  kycVerificationStatus,
+  setBankVerificationStatus,
+  onFinalComplete
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const [validationErrors, setValidationErrors] = useState({});
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://viable-money-be.onrender.com';
 
-  // Form options
+  const patterns = {
+    phone: /^[6-9]\d{9}$/,
+    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    pincode: /^[1-9][0-9]{5}$/,
+    nomineeName: /^[A-Za-z ]{1,40}$/
+  };
+
   const options = {
-    skipNomination: [
-      { value: 'yes', label: 'Yes, Skip Nomination' },
-      { value: 'no', label: 'No, Add Nominees' }
-    ],
     relationship: [
       { value: 'aunt', label: 'Aunt' },
       { value: 'brother_in_law', label: 'Brother-in-law' },
@@ -81,30 +58,49 @@ const NominationStep = ({ formData, onSubmit, loading, errors, bankVerificationS
       { value: 'aadhaar_last4', label: 'Aadhaar Last 4 Digits' },
       { value: 'driving_license', label: 'Driving License' },
       { value: 'passport', label: 'Passport' }
+    ],
+    skipNomination: [
+      { value: 'yes', label: 'Yes, Skip Nomination' },
+      { value: 'no', label: 'No, Add Nominees' }
     ]
   };
 
-  // Validation patterns
-  const patterns = {
-    phone: /^[6-9]\d{9}$/,
-    pincode: /^[1-9][0-9]{5}$/,
-    email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    nomineeName: /^[A-Za-z ]{1,40}$/
+  const validate = () => {
+    const newErrors = {};
+    
+    if (!formData.skipNomination) newErrors.skipNomination = 'Please select nomination preference';
+    
+    if (formData.skipNomination === 'no') {
+      if (!formData.nominees[0]?.name || !patterns.nomineeName.test(formData.nominees[0].name)) {
+        newErrors['nominees.0.name'] = 'Nominee name is required (1-40 characters, letters and spaces only)';
+      }
+      if (!formData.nominees[0]?.relationship) newErrors['nominees.0.relationship'] = 'Nominee relationship is required';
+      if (!formData.nominees[0]?.dob) newErrors['nominees.0.dob'] = 'Nominee date of birth is required';
+      if (!formData.nominees[0]?.idNumber) newErrors['nominees.0.idNumber'] = 'Nominee ID number is required';
+      if (!patterns.phone.test(formData.nominees[0]?.phone)) newErrors['nominees.0.phone'] = 'Invalid nominee phone number';
+      if (!patterns.email.test(formData.nominees[0]?.email)) newErrors['nominees.0.email'] = 'Invalid nominee email format';
+      if (!formData.nominees[0]?.address?.line?.trim()) newErrors['nominees.0.address.line'] = 'Nominee address is required';
+      if (!patterns.pincode.test(formData.nominees[0]?.address?.pincode)) newErrors['nominees.0.address.pincode'] = 'Invalid nominee address pincode';
+      
+      const totalAllocation = formData.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0);
+      if (totalAllocation !== 100) {
+        newErrors.allocation = `Total allocation must equal 100%. Current total: ${totalAllocation}%`;
+      }
+    }
+    
+    return newErrors;
   };
 
-  // Handle input change
-  const handleChange = (field, value) => {
-    setData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
     
-    // Clear validation error for this field
-    if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: '' }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
-  // Handle nominee change
   const handleNomineeChange = (index, field, value) => {
-    setData(prev => {
+    setFormData(prev => {
       const newNominees = [...prev.nominees];
       if (!newNominees[index]) newNominees[index] = {};
       
@@ -118,17 +114,10 @@ const NominationStep = ({ formData, onSubmit, loading, errors, bankVerificationS
       
       return { ...prev, nominees: newNominees };
     });
-
-    // Clear validation errors
-    const errorKey = `nominees.${index}.${field}`;
-    if (validationErrors[errorKey]) {
-      setValidationErrors(prev => ({ ...prev, [errorKey]: '' }));
-    }
   };
 
-  // Add nominee
   const addNominee = () => {
-    setData(prev => ({
+    setFormData(prev => ({
       ...prev,
       nominees: [...prev.nominees, {
         name: '',
@@ -145,378 +134,337 @@ const NominationStep = ({ formData, onSubmit, loading, errors, bankVerificationS
     }));
   };
 
-  // Remove nominee
   const removeNominee = (index) => {
-    setData(prev => ({
+    setFormData(prev => ({
       ...prev,
       nominees: prev.nominees.filter((_, i) => i !== index)
     }));
   };
 
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {};
-    
-    if (!data.skipNomination) {
-      newErrors.skipNomination = 'Please select nomination preference';
+  const handleSubmit = async () => {
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
     }
-    
-    if (data.skipNomination === 'no') {
-      if (!data.nominees || data.nominees.length === 0) {
-        newErrors.nominees = 'At least one nominee is required';
-        return newErrors;
-      }
 
-      data.nominees.forEach((nominee, index) => {
-        if (!nominee.name || !patterns.nomineeName.test(nominee.name)) {
-          newErrors[`nominees.${index}.name`] = 'Nominee name is required (1-40 characters, letters and spaces only)';
-        }
-        if (!nominee.relationship) {
-          newErrors[`nominees.${index}.relationship`] = 'Nominee relationship is required';
-        }
-        if (!nominee.dob) {
-          newErrors[`nominees.${index}.dob`] = 'Nominee date of birth is required';
-        }
-        if (!nominee.idNumber) {
-          newErrors[`nominees.${index}.idNumber`] = 'Nominee ID number is required';
-        }
-        if (!patterns.phone.test(nominee.phone)) {
-          newErrors[`nominees.${index}.phone`] = 'Invalid nominee phone number';
-        }
-        if (!patterns.email.test(nominee.email)) {
-          newErrors[`nominees.${index}.email`] = 'Invalid nominee email format';
-        }
-        if (!nominee.address?.line?.trim()) {
-          newErrors[`nominees.${index}.address.line`] = 'Nominee address is required';
-        }
-        if (!patterns.pincode.test(nominee.address?.pincode)) {
-          newErrors[`nominees.${index}.address.pincode`] = 'Invalid nominee address pincode';
-        }
-      });
+    setLoading(true);
+    setErrors({});
+    setSuccessMessage('');
+
+    try {
+      const payload = {
+        skipNomination: formData.skipNomination,
+        displaySetting: formData.displaySetting
+      };
       
-      const totalAllocation = data.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0);
-      if (Math.abs(totalAllocation - 100) > 0.01) {
-        newErrors.allocation = `Total allocation must equal 100%. Current total: ${totalAllocation}%`;
+      if (formData.skipNomination === 'no') {
+        payload.nominees = formData.nominees.filter(nominee => nominee.name);
       }
-    }
-    
-    return newErrors;
-  };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    const newErrors = validateForm();
-    setValidationErrors(newErrors);
-    
-    if (Object.keys(newErrors).length === 0) {
-      onSubmit(data);
+      const response = await fetch(`${API_BASE_URL}/api/onboarding/nomination-info/${transactionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to save nomination information');
+      }
+      
+      if (result.success) {
+        if (result.data?.bankVerificationStatus === 'verified') {
+          setBankVerificationStatus(true);
+        } else if (result.data?.bankVerificationStatus === 'failed') {
+          setBankVerificationStatus(false);
+        }
+
+        // Check if signature step is needed
+        console.log('NominationStep - needsSignature:', needsSignature);
+        console.log('NominationStep - kycVerificationStatus:', kycVerificationStatus);
+        
+        if (needsSignature || kycVerificationStatus === false) {
+          setSuccessMessage('Nomination information saved! Please upload your signature and provide Aadhaar details.');
+          setTimeout(() => {
+            onNext();
+            setSuccessMessage('');
+          }, 1000);
+        } else {
+          setSuccessMessage('✅ KYC process completed successfully!');
+          setTimeout(() => {
+            onFinalComplete();
+          }, 1500);
+        }
+      }
+    } catch (error) {
+      setErrors({ api: error.message });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Bank Verification Status Alert */}
-      {bankVerificationStatus !== 'pending' && (
-        <Alert className={`border-2 ${
-          bankVerificationStatus === 'verified' 
-            ? 'border-green-200 bg-green-50' 
-            : 'border-amber-200 bg-amber-50'
-        }`}>
-          {bankVerificationStatus === 'verified' ? (
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-amber-600" />
-          )}
-          <AlertDescription className={
-            bankVerificationStatus === 'verified' ? 'text-green-800' : 'text-amber-800'
-          }>
-            {bankVerificationStatus === 'verified' 
-              ? 'Your bank details have been verified successfully!'
-              : 'Bank verification is in progress. Manual verification may be required.'
-            }
-          </AlertDescription>
+      {successMessage && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
         </Alert>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Nomination Header */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-medium text-blue-900 mb-1">Nomination Information</h4>
-          <p className="text-sm text-blue-700">Choose whether to add nominees for your account</p>
-        </div>
+      {errors.api && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{errors.api}</AlertDescription>
+        </Alert>
+      )}
 
-        {/* Skip Nomination Selection */}
-        <div className="space-y-3">
-          <Label>Do you want to skip nomination? *</Label>
-          <RadioGroup
-            value={data.skipNomination}
-            onValueChange={(value) => handleChange('skipNomination', value)}
-            className="flex flex-col space-y-2"
-          >
-            {options.skipNomination.map(option => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <RadioGroupItem value={option.value} id={`skip-${option.value}`} />
-                <Label htmlFor={`skip-${option.value}`} className="text-sm">
-                  {option.label}
-                </Label>
+      <Alert className="border-blue-200 bg-blue-50">
+        <AlertDescription className="text-blue-800">
+          <strong>Nomination Information:</strong> Choose whether to add nominees for your account
+        </AlertDescription>
+      </Alert>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Do you want to skip nomination? *</label>
+        <div className="space-y-2">
+          {options.skipNomination.map(option => (
+            <label key={option.value} className="flex items-center">
+              <input
+                type="radio"
+                name="skipNomination"
+                value={option.value}
+                checked={formData.skipNomination === option.value}
+                onChange={(e) => handleInputChange('skipNomination', e.target.value)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="ml-2 text-sm text-gray-900">{option.label}</span>
+            </label>
+          ))}
+        </div>
+        {errors.skipNomination && <p className="mt-1 text-sm text-red-600">{errors.skipNomination}</p>}
+      </div>
+
+      {formData.skipNomination === 'no' && (
+        <div className="space-y-6">
+          <Alert className="border-amber-200 bg-amber-50">
+            <AlertDescription className="text-amber-800">
+              <strong>Important:</strong> Total allocation percentage across all nominees must equal 100%.
+            </AlertDescription>
+          </Alert>
+
+          {formData.nominees.map((nominee, index) => (
+            <div key={index} className="border border-gray-200 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h5 className="font-medium text-gray-900">Nominee {index + 1}</h5>
+                {formData.nominees.length > 1 && (
+                  <Button
+                    onClick={() => removeNominee(index)}
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 hover:text-red-800 border-red-300 hover:border-red-400"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    Remove
+                  </Button>
+                )}
               </div>
-            ))}
-          </RadioGroup>
-          {validationErrors.skipNomination && (
-            <p className="text-sm text-red-600">{validationErrors.skipNomination}</p>
-          )}
-        </div>
 
-        {/* Nominees Section */}
-        {data.skipNomination === 'no' && (
-          <div className="space-y-6">
-            {/* Allocation Warning */}
-            <Alert className="border-amber-200 bg-amber-50">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800">
-                <strong>Important:</strong> Total allocation percentage across all nominees must equal 100%.
-              </AlertDescription>
-            </Alert>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Nominee name *</label>
+                  <input
+                    type="text"
+                    value={nominee.name}
+                    onChange={(e) => handleNomineeChange(index, 'name', e.target.value)}
+                    placeholder="Nominee full name"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.name`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.name`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.name`]}</p>}
+                </div>
 
-            {/* Nominees List */}
-            {data.nominees.map((nominee, index) => (
-              <Card key={index} className="border-2">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h5 className="font-medium text-gray-900">Nominee {index + 1}</h5>
-                    {data.nominees.length > 1 && (
-                      <Button
-                        type="button"
-                        onClick={() => removeNominee(index)}
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Remove
-                      </Button>
-                    )}
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Relationship *</label>
+                  <select
+                    value={nominee.relationship}
+                    onChange={(e) => handleNomineeChange(index, 'relationship', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.relationship`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Select relationship</option>
+                    {options.relationship.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  {errors[`nominees.${index}.relationship`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.relationship`]}</p>}
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Nominee Name */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-name-${index}`}>Nominee name *</Label>
-                      <Input
-                        id={`nominee-name-${index}`}
-                        type="text"
-                        value={nominee.name}
-                        onChange={(e) => handleNomineeChange(index, 'name', e.target.value)}
-                        placeholder="Nominee full name"
-                        className={validationErrors[`nominees.${index}.name`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.name`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.name`]}</p>
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Date of birth *</label>
+                  <input
+                    type="date"
+                    value={nominee.dob}
+                    onChange={(e) => handleNomineeChange(index, 'dob', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.dob`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.dob`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.dob`]}</p>}
+                </div>
 
-                    {/* Relationship */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-relationship-${index}`}>Relationship *</Label>
-                      <Select
-                        value={nominee.relationship}
-                        onValueChange={(value) => handleNomineeChange(index, 'relationship', value)}
-                      >
-                        <SelectTrigger className={validationErrors[`nominees.${index}.relationship`] ? 'border-red-300' : ''}>
-                          <SelectValue placeholder="Select relationship" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {options.relationship.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {validationErrors[`nominees.${index}.relationship`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.relationship`]}</p>
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ID type</label>
+                  <select
+                    value={nominee.idType}
+                    onChange={(e) => handleNomineeChange(index, 'idType', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  >
+                    {options.idType.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
 
-                    {/* Date of Birth */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-dob-${index}`}>Date of birth *</Label>
-                      <Input
-                        id={`nominee-dob-${index}`}
-                        type="date"
-                        value={nominee.dob}
-                        onChange={(e) => handleNomineeChange(index, 'dob', e.target.value)}
-                        className={validationErrors[`nominees.${index}.dob`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.dob`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.dob`]}</p>
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">ID number *</label>
+                  <input
+                    type="text"
+                    value={nominee.idNumber}
+                    onChange={(e) => handleNomineeChange(index, 'idNumber', e.target.value)}
+                    placeholder="ID number"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.idNumber`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.idNumber`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.idNumber`]}</p>}
+                </div>
 
-                    {/* ID Type */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-idtype-${index}`}>ID type *</Label>
-                      <Select
-                        value={nominee.idType}
-                        onValueChange={(value) => handleNomineeChange(index, 'idType', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select ID type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {options.idType.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
+                  <input
+                    type="text"
+                    value={nominee.phone}
+                    onChange={(e) => handleNomineeChange(index, 'phone', e.target.value)}
+                    placeholder="9876543210"
+                    maxLength={10}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.phone`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.phone`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.phone`]}</p>}
+                </div>
 
-                    {/* ID Number */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-idnumber-${index}`}>ID number *</Label>
-                      <Input
-                        id={`nominee-idnumber-${index}`}
-                        type="text"
-                        value={nominee.idNumber}
-                        onChange={(e) => handleNomineeChange(index, 'idNumber', e.target.value)}
-                        placeholder="ID number"
-                        className={validationErrors[`nominees.${index}.idNumber`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.idNumber`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.idNumber`]}</p>
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                  <input
+                    type="email"
+                    value={nominee.email}
+                    onChange={(e) => handleNomineeChange(index, 'email', e.target.value)}
+                    placeholder="nominee@example.com"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.email`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.email`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.email`]}</p>}
+                </div>
 
-                    {/* Phone */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-phone-${index}`}>Phone *</Label>
-                      <Input
-                        id={`nominee-phone-${index}`}
-                        type="text"
-                        value={nominee.phone}
-                        onChange={(e) => handleNomineeChange(index, 'phone', e.target.value)}
-                        placeholder="9876543210"
-                        maxLength={10}
-                        className={validationErrors[`nominees.${index}.phone`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.phone`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.phone`]}</p>
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+                  <input
+                    type="text"
+                    value={nominee.address.line}
+                    onChange={(e) => handleNomineeChange(index, 'address.line', e.target.value)}
+                    placeholder="Address line"
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.address.line`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.address.line`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.address.line`]}</p>}
+                </div>
 
-                    {/* Email */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-email-${index}`}>Email *</Label>
-                      <Input
-                        id={`nominee-email-${index}`}
-                        type="email"
-                        value={nominee.email}
-                        onChange={(e) => handleNomineeChange(index, 'email', e.target.value)}
-                        placeholder="nominee@example.com"
-                        className={validationErrors[`nominees.${index}.email`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.email`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.email`]}</p>
-                      )}
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
+                  <input
+                    type="text"
+                    value={nominee.address.pincode}
+                    onChange={(e) => handleNomineeChange(index, 'address.pincode', e.target.value)}
+                    placeholder="560034"
+                    maxLength={6}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+                      errors[`nominees.${index}.address.pincode`] ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors[`nominees.${index}.address.pincode`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.address.pincode`]}</p>}
+                </div>
 
-                    {/* Address */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-address-${index}`}>Address *</Label>
-                      <Input
-                        id={`nominee-address-${index}`}
-                        type="text"
-                        value={nominee.address.line}
-                        onChange={(e) => handleNomineeChange(index, 'address.line', e.target.value)}
-                        placeholder="Address line"
-                        className={validationErrors[`nominees.${index}.address.line`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.address.line`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.address.line`]}</p>
-                      )}
-                    </div>
-
-                    {/* Pincode */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-pincode-${index}`}>Pincode *</Label>
-                      <Input
-                        id={`nominee-pincode-${index}`}
-                        type="text"
-                        value={nominee.address.pincode}
-                        onChange={(e) => handleNomineeChange(index, 'address.pincode', e.target.value)}
-                        placeholder="560034"
-                        maxLength={6}
-                        className={validationErrors[`nominees.${index}.address.pincode`] ? 'border-red-300' : ''}
-                      />
-                      {validationErrors[`nominees.${index}.address.pincode`] && (
-                        <p className="text-sm text-red-600">{validationErrors[`nominees.${index}.address.pincode`]}</p>
-                      )}
-                    </div>
-
-                    {/* Allocation Percentage */}
-                    <div className="space-y-2">
-                      <Label htmlFor={`nominee-allocation-${index}`}>Allocation % *</Label>
-                      <Input
-                        id={`nominee-allocation-${index}`}
-                        type="number"
-                        min="0.01"
-                        max="100"
-                        step="0.01"
-                        value={nominee.allocationPercentage}
-                        onChange={(e) => handleNomineeChange(index, 'allocationPercentage', parseFloat(e.target.value) || 0)}
-                        placeholder="50"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-
-            {/* Add/Remove Nominee Controls */}
-            <div className="flex items-center justify-between">
-              <Button
-                type="button"
-                onClick={addNominee}
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Another Nominee</span>
-              </Button>
-              <div className="text-sm text-gray-600">
-                Total allocation: {data.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0)}%
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Allocation % *</label>
+                  <input
+                    type="number"
+                    min="0.01"
+                    max="100"
+                    step="0.01"
+                    value={nominee.allocationPercentage}
+                    onChange={(e) => handleNomineeChange(index, 'allocationPercentage', parseFloat(e.target.value) || 0)}
+                    placeholder="50"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
               </div>
             </div>
+          ))}
 
-            {validationErrors.allocation && (
-              <p className="text-sm text-red-600">{validationErrors.allocation}</p>
-            )}
+          <div className="flex items-center justify-between">
+            <Button
+              onClick={addNominee}
+              variant="outline"
+              className="text-blue-600 hover:text-blue-800 border-blue-300 hover:border-blue-400 flex items-center space-x-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Another Nominee</span>
+            </Button>
+            <div className="text-sm text-gray-600">
+              Total allocation: {formData.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0)}%
+            </div>
           </div>
-        )}
 
-        {/* Submit Button */}
-        <div className="flex justify-end pt-6">
-          <Button
-            type="submit"
-            disabled={loading}
-            className="min-w-32"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              'Continue'
-            )}
-          </Button>
+          {errors.allocation && <p className="text-sm text-red-600">{errors.allocation}</p>}
         </div>
-      </form>
+      )}
+
+      <div className="flex justify-between pt-6">
+        <Button
+          onClick={onPrevious}
+          variant="outline"
+          className="border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Previous</span>
+        </Button>
+
+        <Button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Processing...</span>
+            </>
+          ) : needsSignature || kycVerificationStatus === false ? (
+            <>
+              <span>Continue</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
+          ) : (
+            <span>Complete KYC</span>
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

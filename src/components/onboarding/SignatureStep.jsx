@@ -1,395 +1,301 @@
-'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, Upload, MapPin, AlertTriangle, CheckCircle, FileText } from 'lucide-react';
+import { ArrowLeft, Check, MapPin } from 'lucide-react';
 
-const SignatureStep = ({ formData, onSubmit, loading, errors }) => {
-  const [data, setData] = useState({
-    signatureFile: null,
-    aadhaarNumber: '',
-    geolocation: {
-      latitude: null,
-      longitude: null,
-      accuracy: null,
-      timestamp: null
-    },
-    ...formData?.signatureInfo
-  });
-
-  const [validationErrors, setValidationErrors] = useState({});
+const SignatureStep = ({ 
+  formData, 
+  setFormData, 
+  transactionId, 
+  onPrevious,
+  onFinalComplete
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
+  const [geolocation, setGeolocation] = useState(null);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [locationPermission, setLocationPermission] = useState('prompt');
-  const [dragActive, setDragActive] = useState(false);
 
-  // Get current location
-  const getCurrentLocation = () => {
-    setLocationLoading(true);
-    
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://viable-money-be.onrender.com';
+
+  const patterns = {
+    aadhaar: /^\d{4}$/
+  };
+
+  // Get user's geolocation
+  const getCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setValidationErrors(prev => ({
-        ...prev,
-        geolocation: 'Geolocation is not supported by this browser'
-      }));
-      setLocationLoading(false);
+      setErrors(prev => ({ ...prev, location: 'Geolocation is not supported by this browser' }));
       return;
     }
 
+    setLocationLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude, accuracy } = position.coords;
-        setData(prev => ({
-          ...prev,
-          geolocation: {
-            latitude,
-            longitude,
-            accuracy,
-            timestamp: new Date().toISOString()
-          }
-        }));
-        setLocationPermission('granted');
+        const locationData = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: new Date().toISOString()
+        };
+        setGeolocation(locationData);
+        setFormData(prev => ({ ...prev, geolocation: locationData }));
         setLocationLoading(false);
-        
-        // Clear geolocation errors
-        setValidationErrors(prev => {
-          const newErrors = { ...prev };
-          delete newErrors.geolocation;
-          return newErrors;
-        });
+        setErrors(prev => ({ ...prev, location: '' }));
       },
       (error) => {
-        let errorMessage = 'Unable to retrieve your location';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location services and try again.';
-            setLocationPermission('denied');
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information is unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
-            break;
-        }
-        setValidationErrors(prev => ({ ...prev, geolocation: errorMessage }));
+        console.error('Geolocation error:', error);
+        setErrors(prev => ({ 
+          ...prev, 
+          location: 'Unable to retrieve your location. Please enable location services and try again.' 
+        }));
         setLocationLoading(false);
       },
       {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 60000 // 1 minute
+        maximumAge: 600000 // 10 minutes
       }
     );
-  };
+  }, [setFormData]);
 
-  // Auto-get location on component mount
+  // Initialize geolocation if already in form data
   useEffect(() => {
-    if (!data.geolocation.latitude) {
-      getCurrentLocation();
+    if (formData.geolocation) {
+      setGeolocation(formData.geolocation);
     }
-  }, []);
+  }, [formData.geolocation]);
 
-  // Handle file input change
-  const handleFileChange = (file) => {
-    if (file) {
-      // Validate file type and size
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-      const maxSize = 5 * 1024 * 1024; // 5MB
-
-      if (!allowedTypes.includes(file.type)) {
-        setValidationErrors(prev => ({
-          ...prev,
-          signatureFile: 'Invalid file type. Please upload JPEG, PNG, or PDF files only.'
-        }));
-        return;
-      }
-
-      if (file.size > maxSize) {
-        setValidationErrors(prev => ({
-          ...prev,
-          signatureFile: 'File too large. Maximum size allowed is 5MB.'
-        }));
-        return;
-      }
-
-      setData(prev => ({ ...prev, signatureFile: file }));
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors.signatureFile;
-        return newErrors;
-      });
-    }
-  };
-
-  // Handle drag events
-  const handleDrag = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileChange(e.dataTransfer.files[0]);
-    }
-  };
-
-  // Handle input change
-  const handleChange = (field, value) => {
-    setData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear validation error for this field
-    if (validationErrors[field]) {
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
+  const validate = () => {
     const newErrors = {};
     
-    if (!data.signatureFile) {
+    if (!formData.signatureFile) {
       newErrors.signatureFile = 'Please upload your signature';
     }
-    
-    if (!data.aadhaarNumber) {
-      newErrors.aadhaarNumber = 'Aadhaar number is required';
-    } else if (!/^[0-9]{12}$/.test(data.aadhaarNumber)) {
-      newErrors.aadhaarNumber = 'Aadhaar number must be exactly 12 digits';
+    if (!patterns.aadhaar.test(formData.aadhaarLastFour)) {
+      newErrors.aadhaarLastFour = 'Aadhaar number must be exactly 12 digits';
     }
-    
-    if (!data.geolocation.latitude) {
-      newErrors.geolocation = 'Location is required for verification. Please allow location access.';
+    if (!geolocation || !geolocation.latitude || !geolocation.longitude) {
+      newErrors.location = 'Location is required for signature verification';
     }
     
     return newErrors;
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
     
-    const newErrors = validateForm();
-    setValidationErrors(newErrors);
-    
-    if (Object.keys(newErrors).length === 0) {
-      onSubmit(data);
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors({ signatureFile: 'Invalid file type. Please upload JPEG, PNG, or PDF files only.' });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        setErrors({ signatureFile: 'File too large. Maximum size allowed is 5MB.' });
+        return;
+      }
+
+      setFormData(prev => ({ ...prev, signatureFile: file }));
+      setErrors(prev => ({ ...prev, signatureFile: '' }));
+    }
+  };
+
+  const uploadSignature = async () => {
+    try {
+      const formDataToUpload = new FormData();
+      formDataToUpload.append('signature', formData.signatureFile);
+      formDataToUpload.append('aadhaarLastFour', formData.aadhaarLastFour);
+      formDataToUpload.append('geolocation', JSON.stringify(geolocation));
+      
+      console.log('Uploading signature with data:', {
+        aadhaarLastFour: formData.aadhaarLastFour,
+        geolocation
+      });
+
+      const response = await fetch(`${API_BASE_URL}/api/onboarding/signature/${transactionId}`, {
+        method: 'POST',
+        body: formDataToUpload
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Signature upload failed');
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Signature Upload Failed:', error);
+      throw error;
+    }
+  };
+
+  const handleSubmit = async () => {
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setLoading(true);
+    setErrors({});
+    setSuccessMessage('');
+
+    try {
+      const result = await uploadSignature();
+      
+      if (result && result.success) {
+        setSuccessMessage('✅ KYC process completed successfully!');
+        setTimeout(() => {
+          onFinalComplete();
+        }, 1500);
+      }
+    } catch (error) {
+      setErrors({ api: error.message });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Header */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-medium text-blue-900 mb-1">Upload Signature</h4>
-          <p className="text-sm text-blue-700">
-            Please upload your signature document along with verification details
-          </p>
-        </div>
-
-        {/* Important Notice */}
-        <Alert className="border-amber-200 bg-amber-50">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <AlertDescription className="text-amber-800">
-            <strong>Important:</strong> This step is required because your KYC requires manual verification. 
-            Please provide your complete Aadhaar number and allow location access for security purposes.
-          </AlertDescription>
+      {successMessage && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
         </Alert>
+      )}
 
-        {/* Signature Upload */}
-        <div className="space-y-2">
-          <Label htmlFor="signature">Signature Document *</Label>
-          
-          {/* Drag and Drop Area */}
-          <div
-            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-              dragActive 
-                ? 'border-blue-400 bg-blue-50' 
-                : data.signatureFile 
-                  ? 'border-green-400 bg-green-50' 
-                  : validationErrors.signatureFile 
-                    ? 'border-red-300 bg-red-50' 
-                    : 'border-gray-300 hover:border-gray-400'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
-            <input
-              id="signature"
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,application/pdf"
-              onChange={(e) => handleFileChange(e.target.files[0])}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-            
-            <div className="space-y-4">
-              {data.signatureFile ? (
-                <div className="flex items-center justify-center space-x-2 text-green-700">
-                  <CheckCircle className="w-6 h-6" />
-                  <div className="text-left">
-                    <p className="font-medium">{data.signatureFile.name}</p>
-                    <p className="text-sm text-green-600">
-                      {(data.signatureFile.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Upload className="w-8 h-8 mx-auto text-gray-400" />
-                  <div>
-                    <p className="text-gray-600">
-                      Drop your signature file here or <span className="text-blue-600 font-medium">browse</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Supported formats: JPEG, PNG, PDF (Max: 5MB)
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          
-          {validationErrors.signatureFile && (
-            <p className="text-sm text-red-600">{validationErrors.signatureFile}</p>
-          )}
-        </div>
-
-        {/* Aadhaar Number */}
-        <div className="space-y-2">
-          <Label htmlFor="aadhaarNumber">Aadhaar Number *</Label>
-          <Input
-            id="aadhaarNumber"
-            type="text"
-            value={data.aadhaarNumber}
-            onChange={(e) => handleChange('aadhaarNumber', e.target.value)}
-            placeholder="1234 5678 9012"
-            maxLength={12}
-            className={validationErrors.aadhaarNumber ? 'border-red-300' : ''}
-          />
-          {validationErrors.aadhaarNumber && (
-            <p className="text-sm text-red-600">{validationErrors.aadhaarNumber}</p>
-          )}
-          <p className="text-xs text-gray-500">
-            Your complete 12-digit Aadhaar number is required for verification
-          </p>
-        </div>
-
-        {/* Geolocation */}
-        <Card className={`border-2 ${
-          data.geolocation.latitude 
-            ? 'border-green-200' 
-            : validationErrors.geolocation 
-              ? 'border-red-200' 
-              : 'border-gray-200'
-        }`}>
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center space-x-2">
-                <MapPin className={`w-5 h-5 ${
-                  data.geolocation.latitude ? 'text-green-600' : 'text-gray-400'
-                }`} />
-                <div>
-                  <Label className="text-sm font-medium">Location Verification *</Label>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Required for security and compliance purposes
-                  </p>
-                </div>
-              </div>
-              
-              {!data.geolocation.latitude && (
-                <Button
-                  type="button"
-                  onClick={getCurrentLocation}
-                  disabled={locationLoading}
-                  variant="outline"
-                  size="sm"
-                >
-                  {locationLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Getting Location...
-                    </>
-                  ) : (
-                    'Get Location'
-                  )}
-                </Button>
-              )}
-            </div>
-            
-            {data.geolocation.latitude ? (
-              <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                  <span className="text-sm text-green-800 font-medium">Location captured successfully</span>
-                </div>
-                <div className="text-xs text-green-700 mt-1">
-                  Lat: {data.geolocation.latitude.toFixed(6)}, Lng: {data.geolocation.longitude.toFixed(6)}
-                  {data.geolocation.accuracy && ` (±${Math.round(data.geolocation.accuracy)}m)`}
-                </div>
-              </div>
-            ) : validationErrors.geolocation ? (
-              <div className="mt-3 p-3 bg-red-50 rounded-lg">
-                <p className="text-sm text-red-800">{validationErrors.geolocation}</p>
-                {locationPermission === 'denied' && (
-                  <p className="text-xs text-red-700 mt-1">
-                    Please enable location services in your browser settings and refresh the page.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600">Click "Get Location" to capture your current location</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Security Notice */}
-        <Alert className="border-blue-200 bg-blue-50">
-          <FileText className="h-4 w-4 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong>Privacy & Security:</strong> Your signature, Aadhaar number, and location are securely encrypted 
-            and used only for KYC verification purposes. This information helps us comply with regulatory requirements 
-            and protect your account.
-          </AlertDescription>
+      {errors.api && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertDescription className="text-red-800">{errors.api}</AlertDescription>
         </Alert>
+      )}
 
-        {/* Submit Button */}
-        <div className="flex justify-end pt-6">
+      <Alert className="border-blue-200 bg-blue-50">
+        <AlertDescription className="text-blue-800">
+          <strong>Complete Verification:</strong> Upload your signature, provide Aadhaar details, and allow location access for final verification
+        </AlertDescription>
+      </Alert>
+
+      {/* Aadhaar Number Input */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number *</label>
+        <input
+          type="text"
+          value={formData.aadhaarLastFour}
+          onChange={(e) => handleInputChange('aadhaarLastFour', e.target.value)}
+          placeholder="123456789012"
+          maxLength={12}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+            errors.aadhaarLastFour ? 'border-red-300' : 'border-gray-300'
+          }`}
+        />
+        {errors.aadhaarLastFour && <p className="mt-1 text-sm text-red-600">{errors.aadhaarLastFour}</p>}
+        <p className="mt-2 text-sm text-gray-500">
+          Your complete 12-digit Aadhaar number is required for verification
+        </p>
+      </div>
+
+      {/* Location Access */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Location Verification *</label>
+        <div className="flex items-center space-x-3">
           <Button
-            type="submit"
-            disabled={loading}
-            className="min-w-32"
+            onClick={getCurrentLocation}
+            disabled={locationLoading || !!geolocation}
+            variant={geolocation ? "default" : "outline"}
+            className={`flex items-center space-x-2 ${geolocation ? "bg-green-600 hover:bg-green-700" : ""}`}
           >
-            {loading ? (
+            {locationLoading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span>Getting Location...</span>
+              </>
+            ) : geolocation ? (
+              <>
+                <Check className="w-4 h-4" />
+                <span>Location Captured</span>
               </>
             ) : (
-              'Complete KYC'
+              <>
+                <MapPin className="w-4 h-4" />
+                <span>Get Current Location</span>
+              </>
             )}
           </Button>
+          {geolocation && (
+            <span className="text-sm text-green-600">
+              Location verified (Accuracy: ~{Math.round(geolocation.accuracy)}m)
+            </span>
+          )}
         </div>
-      </form>
+        {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
+        <p className="mt-2 text-sm text-gray-500">
+          We need your location for security and compliance purposes
+        </p>
+      </div>
+
+      {/* Signature Upload */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Signature Document *</label>
+        <input
+          type="file"
+          accept="image/jpeg,image/jpg,image/png,application/pdf"
+          onChange={handleFileChange}
+          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
+            errors.signatureFile ? 'border-red-300' : 'border-gray-300'
+          }`}
+        />
+        {errors.signatureFile && <p className="mt-1 text-sm text-red-600">{errors.signatureFile}</p>}
+        <p className="mt-2 text-sm text-gray-500">
+          Accepted formats: JPEG, PNG, PDF. Maximum size: 5MB
+        </p>
+      </div>
+
+      {formData.signatureFile && (
+        <Alert className="border-green-200 bg-green-50">
+          <AlertDescription className="text-green-800">
+            File selected: {formData.signatureFile.name}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex justify-between pt-6">
+        <Button
+          onClick={onPrevious}
+          variant="outline"
+          className="border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors flex items-center space-x-2"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Previous</span>
+        </Button>
+
+        <Button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+        >
+          {loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Processing...</span>
+            </>
+          ) : (
+            <span>Complete KYC</span>
+          )}
+        </Button>
+      </div>
     </div>
   );
 };

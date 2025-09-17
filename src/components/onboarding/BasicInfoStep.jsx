@@ -1,38 +1,48 @@
-'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const BasicInfoStep = ({ formData, onSubmit, loading, errors }) => {
-  const [data, setData] = useState({
-    name: '',
-    pan: '',
-    dob: '',
-    gender: '',
-    fatherName: '',
-    motherName: '',
-    maritalStatus: '',
-    spouseName: '',
-    occupation: '',
-    sourceOfWealth: '',
-    incomeRange: '',
-    countryOfBirth: 'in',
-    placeOfBirth: '',
-    politicalExposure: 'no_exposure',
-    aadhaarLastFour: '',
-    nationality: 'in',
-    citizenships: ['in'],
-    indiaTaxResidencyStatus: 'resident',
-    ...formData?.basicInfo
-  });
+// Mobile Horizontal Selector Component
+const MobileHorizontalSelector = ({ options, value, onChange, placeholder }) => {
+  return (
+    <div className="relative">
+      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+        {options.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`flex-shrink-0 px-4 py-2 rounded-lg border text-sm font-medium transition-all whitespace-nowrap ${
+              value === option.value 
+                ? 'bg-blue-400 text-white border-blue-400' 
+                : 'bg-transparent border-blue-400 text-gray-700 hover:border-blue-500'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {!value && (
+        <p className="text-xs text-gray-500 mt-1">Scroll to see more options</p>
+      )}
+    </div>
+  );
+};
 
-  const [validationErrors, setValidationErrors] = useState({});
+const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
 
-  // Form options
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://viable-money-be.onrender.com';
+
+  const patterns = {
+    pan: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
+    name: /^[A-Za-z ]{1,70}$/,
+    place: /^.{2,50}$/
+  };
+
   const options = {
     gender: [
       { value: 'male', label: 'Male' },
@@ -79,8 +89,7 @@ const BasicInfoStep = ({ formData, onSubmit, loading, errors }) => {
       { value: 'above_1cr', label: 'Above ₹1 Crore' }
     ],
     countryOfBirth: [
-      { value: 'in', label: 'India' },
-      { value: 'Other', label: 'Other' }
+      { value: 'in', label: 'India' }
     ],
     politicalExposure: [
       { value: 'no_exposure', label: 'No Exposure' },
@@ -89,410 +98,428 @@ const BasicInfoStep = ({ formData, onSubmit, loading, errors }) => {
     ]
   };
 
-  // Validation patterns
-  const patterns = {
-    pan: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
-    aadhaar: /^\d{4}$/,
-    name: /^[A-Za-z ]{1,70}$/,
-    place: /^.{2,50}$/
-  };
-
-  // Handle input change
-  const handleChange = (field, value) => {
-    setData(prev => {
-      const newData = { ...prev, [field]: value };
-      
-      // Clear spouse name if marital status changes to unmarried/others
-      if (field === 'maritalStatus') {
-        if (value === 'unmarried' || value === 'others') {
-          newData.spouseName = '';
-        }
-      }
-      
-      return newData;
-    });
-    
-    // Clear validation error for this field
-    if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
+  const validate = () => {
     const newErrors = {};
     
-    if (!patterns.name.test(data.name)) {
-      newErrors.name = 'Name must contain only letters and spaces (1-70 characters)';
-    }
-    if (!patterns.pan.test(data.pan)) {
-      newErrors.pan = 'Invalid PAN format (e.g., ABCDE1234F)';
-    }
-    if (!data.dob) {
-      newErrors.dob = 'Date of birth is required';
-    } else {
-      const age = new Date().getFullYear() - new Date(data.dob).getFullYear();
-      if (age < 18 || age > 100) {
-        newErrors.dob = 'Age must be between 18 and 100 years';
-      }
-    }
-    if (!data.gender) newErrors.gender = 'Gender is required';
-    if (!patterns.name.test(data.fatherName)) {
-      newErrors.fatherName = 'Father name must contain only letters and spaces';
-    }
-    if (!patterns.name.test(data.motherName)) {
-      newErrors.motherName = 'Mother name must contain only letters and spaces';
-    }
-    if (!data.maritalStatus) newErrors.maritalStatus = 'Marital status is required';
-    if (data.maritalStatus === 'married' && !patterns.name.test(data.spouseName)) {
+    if (!patterns.name.test(formData.name)) newErrors.name = 'Name must contain only letters and spaces (1-70 characters)';
+    if (!patterns.pan.test(formData.pan)) newErrors.pan = 'Invalid PAN format (e.g., ABCDE1234F)';
+    if (!formData.dob) newErrors.dob = 'Date of birth is required';
+    if (!formData.gender) newErrors.gender = 'Gender is required';
+    if (!patterns.name.test(formData.fatherName)) newErrors.fatherName = 'Father name must contain only letters and spaces';
+    if (!patterns.name.test(formData.motherName)) newErrors.motherName = 'Mother name must contain only letters and spaces';
+    if (!formData.maritalStatus) newErrors.maritalStatus = 'Marital status is required';
+    if (formData.maritalStatus === 'married' && !patterns.name.test(formData.spouseName)) {
       newErrors.spouseName = 'Spouse name is required for married status';
     }
-    if (!data.occupation) newErrors.occupation = 'Occupation is required';
-    if (!data.sourceOfWealth) newErrors.sourceOfWealth = 'Source of wealth is required';
-    if (!data.incomeRange) newErrors.incomeRange = 'Income range is required';
-    if (!data.countryOfBirth) newErrors.countryOfBirth = 'Country of birth is required';
-    if (!patterns.place.test(data.placeOfBirth)) {
-      newErrors.placeOfBirth = 'Place of birth is required (2-50 characters)';
-    }
-    if (!data.politicalExposure) {
-      newErrors.politicalExposure = 'Political exposure status is required';
-    }
-    if (!patterns.aadhaar.test(data.aadhaarLastFour)) {
-      newErrors.aadhaarLastFour = 'Last 4 digits of Aadhaar required';
+    if (!formData.occupation) newErrors.occupation = 'Occupation is required';
+    if (!formData.sourceOfWealth) newErrors.sourceOfWealth = 'Source of wealth is required';
+    if (!formData.incomeRange) newErrors.incomeRange = 'Income range is required';
+    if (!formData.countryOfBirth) newErrors.countryOfBirth = 'Country of birth is required';
+    if (!patterns.place.test(formData.placeOfBirth)) newErrors.placeOfBirth = 'Place of birth is required (2-50 characters)';
+    if (!formData.politicalExposure) newErrors.politicalExposure = 'Please confirm you have no political exposure';
+    
+    if (formData.dob) {
+      const age = new Date().getFullYear() - new Date(formData.dob).getFullYear();
+      if (age < 18 || age > 100) newErrors.dob = 'Age must be between 18 and 100 years';
     }
     
     return newErrors;
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleInputChange = (field, value) => {
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      if (field === 'maritalStatus') {
+        if (value === 'unmarried' || value === 'others') {
+          newData.spouseName = '';
+        }
+      }
+      return newData;
+    });
     
-    const newErrors = validateForm();
-    setValidationErrors(newErrors);
-    
-    if (Object.keys(newErrors).length === 0) {
-      onSubmit(data);
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
+  const handleSubmit = async () => {
+    const validationErrors = validate();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setLoading(true);
+    setErrors({});
+    setSuccessMessage('');
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/onboarding/basic-info/${transactionId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          pan: formData.pan,
+          dob: formData.dob,
+          gender: formData.gender,
+          fatherName: formData.fatherName,
+          motherName: formData.motherName,
+          maritalStatus: formData.maritalStatus,
+          spouseName: formData.maritalStatus === 'married' ? formData.spouseName : undefined,
+          occupation: formData.occupation,
+          sourceOfWealth: formData.sourceOfWealth,
+          incomeRange: formData.incomeRange,
+          countryOfBirth: formData.countryOfBirth,
+          placeOfBirth: formData.placeOfBirth,
+          politicalExposure: formData.politicalExposure,
+          nationality: formData.nationality,
+          citizenships: formData.citizenships,
+          indiaTaxResidencyStatus: formData.indiaTaxResidencyStatus
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to save basic information');
+      }
+      
+      if (result.success) {
+        setSuccessMessage('Basic information saved successfully! Processing KYC verification...');
+        setTimeout(() => {
+          onNext();
+          setSuccessMessage('');
+        }, 1500);
+      }
+    } catch (error) {
+      setErrors({ api: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Common input classes
+  const inputClasses = (hasError) => `
+    w-full bg-transparent border focus:ring-0 focus:outline-none transition-all duration-200
+    text-gray-900 placeholder-gray-500 
+    px-3 py-2 text-sm lg:px-4 lg:py-3 lg:text-base
+    ${hasError 
+      ? 'border-red-400 focus:border-red-500' 
+      : 'border-blue-400 hover:border-blue-500 focus:border-blue-500'
+    }
+  `;
+
+  const selectClasses = (hasError) => `
+    w-full bg-transparent border focus:ring-0 focus:outline-none transition-all duration-200
+    text-gray-900 
+    px-3 py-2 text-sm lg:px-4 lg:py-3 lg:text-base
+    ${hasError 
+      ? 'border-red-400 focus:border-red-500' 
+      : 'border-blue-400 hover:border-blue-500 focus:border-blue-500'
+    }
+  `;
+
+  const labelClasses = "block text-sm lg:text-base font-medium text-gray-800 mb-1.5 lg:mb-2";
+  const errorClasses = "mt-1 text-xs lg:text-sm text-red-600";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
+      {/* Alerts */}
+      {successMessage && (
+        <Alert className="border-green-400 bg-green-50/50 backdrop-blur-sm">
+          <AlertDescription className="text-green-800 text-sm lg:text-base">{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {errors.api && (
+        <Alert className="border-red-400 bg-red-50/50 backdrop-blur-sm">
+          <AlertDescription className="text-red-800 text-sm lg:text-base">{errors.api}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Name and PAN */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="name">Full name *</Label>
-          <Input
-            id="name"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>Full name (as per PAN card) *</label>
+          <input
             type="text"
-            value={data.name}
-            onChange={(e) => handleChange('name', e.target.value)}
-            placeholder="Enter your full legal name"
-            className={validationErrors.name ? 'border-red-300' : ''}
+            value={formData.name}
+            onChange={(e) => handleInputChange('name', e.target.value)}
+            placeholder="Enter name exactly as on PAN card"
+            className={inputClasses(errors.name)}
           />
-          {validationErrors.name && (
-            <p className="text-sm text-red-600">{validationErrors.name}</p>
-          )}
+          <p className="mt-1 text-xs text-gray-500">Name must match exactly with your PAN card</p>
+          {errors.name && <p className={errorClasses}>{errors.name}</p>}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="pan">PAN number *</Label>
-          <Input
-            id="pan"
+        <div>
+          <label className={labelClasses}>PAN number *</label>
+          <input
             type="text"
-            value={data.pan}
-            onChange={(e) => handleChange('pan', e.target.value.toUpperCase())}
+            value={formData.pan}
+            onChange={(e) => handleInputChange('pan', e.target.value.toUpperCase())}
             placeholder="ABCDE1234F"
             maxLength={10}
-            className={validationErrors.pan ? 'border-red-300' : ''}
+            className={inputClasses(errors.pan)}
           />
-          {validationErrors.pan && (
-            <p className="text-sm text-red-600">{validationErrors.pan}</p>
-          )}
+          {errors.pan && <p className={errorClasses}>{errors.pan}</p>}
         </div>
       </div>
 
       {/* DOB and Gender */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="dob">Date of birth *</Label>
-          <Input
-            id="dob"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>Date of birth *</label>
+          <input
             type="date"
-            value={data.dob}
-            onChange={(e) => handleChange('dob', e.target.value)}
-            className={validationErrors.dob ? 'border-red-300' : ''}
+            value={formData.dob}
+            onChange={(e) => handleInputChange('dob', e.target.value)}
+            className={inputClasses(errors.dob)}
           />
-          {validationErrors.dob && (
-            <p className="text-sm text-red-600">{validationErrors.dob}</p>
-          )}
+          {errors.dob && <p className={errorClasses}>{errors.dob}</p>}
         </div>
 
-        <div className="space-y-3">
-          <Label>Gender *</Label>
-          <RadioGroup
-            value={data.gender}
-            onValueChange={(value) => handleChange('gender', value)}
-            className="flex flex-col space-y-2"
-          >
-            {options.gender.map(option => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <RadioGroupItem value={option.value} id={`gender-${option.value}`} />
-                <Label htmlFor={`gender-${option.value}`} className="text-sm">
-                  {option.label}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-          {validationErrors.gender && (
-            <p className="text-sm text-red-600">{validationErrors.gender}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Father and Mother Name */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="fatherName">Father's name *</Label>
-          <Input
-            id="fatherName"
-            type="text"
-            value={data.fatherName}
-            onChange={(e) => handleChange('fatherName', e.target.value)}
-            placeholder="Father's full name"
-            className={validationErrors.fatherName ? 'border-red-300' : ''}
-          />
-          {validationErrors.fatherName && (
-            <p className="text-sm text-red-600">{validationErrors.fatherName}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="motherName">Mother's name *</Label>
-          <Input
-            id="motherName"
-            type="text"
-            value={data.motherName}
-            onChange={(e) => handleChange('motherName', e.target.value)}
-            placeholder="Mother's full name"
-            className={validationErrors.motherName ? 'border-red-300' : ''}
-          />
-          {validationErrors.motherName && (
-            <p className="text-sm text-red-600">{validationErrors.motherName}</p>
-          )}
-        </div>
-      </div>
-
-      {/* Marital Status and Spouse */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="maritalStatus">Marital status *</Label>
-          <Select
-            value={data.maritalStatus}
-            onValueChange={(value) => handleChange('maritalStatus', value)}
-          >
-            <SelectTrigger className={validationErrors.maritalStatus ? 'border-red-300' : ''}>
-              <SelectValue placeholder="Select marital status" />
-            </SelectTrigger>
-            <SelectContent>
-              {options.maritalStatus.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.maritalStatus && (
-            <p className="text-sm text-red-600">{validationErrors.maritalStatus}</p>
-          )}
-        </div>
-
-        {data.maritalStatus === 'married' && (
-          <div className="space-y-2">
-            <Label htmlFor="spouseName">Spouse name *</Label>
-            <Input
-              id="spouseName"
-              type="text"
-              value={data.spouseName}
-              onChange={(e) => handleChange('spouseName', e.target.value)}
-              placeholder="Spouse's full name"
-              className={validationErrors.spouseName ? 'border-red-300' : ''}
+        <div>
+          <label className={labelClasses}>Gender *</label>
+          {/* Mobile Horizontal Selector */}
+          <div className="lg:hidden">
+            <MobileHorizontalSelector 
+              options={options.gender}
+              value={formData.gender}
+              onChange={(value) => handleInputChange('gender', value)}
+              placeholder="Select gender"
             />
-            {validationErrors.spouseName && (
-              <p className="text-sm text-red-600">{validationErrors.spouseName}</p>
-            )}
+          </div>
+          {/* Desktop Radio Buttons */}
+          <div className="hidden lg:block space-y-3 mt-3">
+            {options.gender.map(option => (
+              <label key={option.value} className="flex items-center">
+                <input
+                  type="radio"
+                  name="gender"
+                  value={option.value}
+                  checked={formData.gender === option.value}
+                  onChange={(e) => handleInputChange('gender', e.target.value)}
+                  className="h-4 w-4 text-blue-400 focus:ring-blue-400 border-blue-400"
+                />
+                <span className="ml-2 text-base text-gray-900">{option.label}</span>
+              </label>
+            ))}
+          </div>
+          {errors.gender && <p className={errorClasses}>{errors.gender}</p>}
+        </div>
+      </div>
+
+      {/* Father's and Mother's Name */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>Father's name *</label>
+          <input
+            type="text"
+            value={formData.fatherName}
+            onChange={(e) => handleInputChange('fatherName', e.target.value)}
+            placeholder="Father's full name"
+            className={inputClasses(errors.fatherName)}
+          />
+          {errors.fatherName && <p className={errorClasses}>{errors.fatherName}</p>}
+        </div>
+
+        <div>
+          <label className={labelClasses}>Mother's name *</label>
+          <input
+            type="text"
+            value={formData.motherName}
+            onChange={(e) => handleInputChange('motherName', e.target.value)}
+            placeholder="Mother's full name"
+            className={inputClasses(errors.motherName)}
+          />
+          {errors.motherName && <p className={errorClasses}>{errors.motherName}</p>}
+        </div>
+      </div>
+
+      {/* Marital Status and Spouse Name */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>Marital status *</label>
+          {/* Mobile Horizontal Selector */}
+          <div className="lg:hidden">
+            <MobileHorizontalSelector 
+              options={options.maritalStatus}
+              value={formData.maritalStatus}
+              onChange={(value) => handleInputChange('maritalStatus', value)}
+              placeholder="Select marital status"
+            />
+          </div>
+          {/* Desktop Select */}
+          <select
+            value={formData.maritalStatus}
+            onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
+            className={`hidden lg:block ${selectClasses(errors.maritalStatus)}`}
+          >
+            <option value="">Select marital status</option>
+            {options.maritalStatus.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {errors.maritalStatus && <p className={errorClasses}>{errors.maritalStatus}</p>}
+        </div>
+
+        {formData.maritalStatus === 'married' && (
+          <div>
+            <label className={labelClasses}>Spouse name *</label>
+            <input
+              type="text"
+              value={formData.spouseName}
+              onChange={(e) => handleInputChange('spouseName', e.target.value)}
+              placeholder="Spouse's full name"
+              className={inputClasses(errors.spouseName)}
+            />
+            {errors.spouseName && <p className={errorClasses}>{errors.spouseName}</p>}
           </div>
         )}
       </div>
 
       {/* Occupation and Source of Wealth */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="occupation">Occupation *</Label>
-          <Select
-            value={data.occupation}
-            onValueChange={(value) => handleChange('occupation', value)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>Occupation *</label>
+          {/* Mobile Horizontal Selector */}
+          <div className="lg:hidden">
+            <MobileHorizontalSelector 
+              options={options.occupation}
+              value={formData.occupation}
+              onChange={(value) => handleInputChange('occupation', value)}
+              placeholder="Select occupation"
+            />
+          </div>
+          {/* Desktop Select */}
+          <select
+            value={formData.occupation}
+            onChange={(e) => handleInputChange('occupation', e.target.value)}
+            className={`hidden lg:block ${selectClasses(errors.occupation)}`}
           >
-            <SelectTrigger className={validationErrors.occupation ? 'border-red-300' : ''}>
-              <SelectValue placeholder="Select occupation" />
-            </SelectTrigger>
-            <SelectContent>
-              {options.occupation.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.occupation && (
-            <p className="text-sm text-red-600">{validationErrors.occupation}</p>
-          )}
+            <option value="">Select occupation</option>
+            {options.occupation.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {errors.occupation && <p className={errorClasses}>{errors.occupation}</p>}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="sourceOfWealth">Source of wealth *</Label>
-          <Select
-            value={data.sourceOfWealth}
-            onValueChange={(value) => handleChange('sourceOfWealth', value)}
+        <div>
+          <label className={labelClasses}>Source of wealth *</label>
+          {/* Mobile Horizontal Selector */}
+          <div className="lg:hidden">
+            <MobileHorizontalSelector 
+              options={options.sourceOfWealth}
+              value={formData.sourceOfWealth}
+              onChange={(value) => handleInputChange('sourceOfWealth', value)}
+              placeholder="Select source"
+            />
+          </div>
+          {/* Desktop Select */}
+          <select
+            value={formData.sourceOfWealth}
+            onChange={(e) => handleInputChange('sourceOfWealth', e.target.value)}
+            className={`hidden lg:block ${selectClasses(errors.sourceOfWealth)}`}
           >
-            <SelectTrigger className={validationErrors.sourceOfWealth ? 'border-red-300' : ''}>
-              <SelectValue placeholder="Select source" />
-            </SelectTrigger>
-            <SelectContent>
-              {options.sourceOfWealth.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.sourceOfWealth && (
-            <p className="text-sm text-red-600">{validationErrors.sourceOfWealth}</p>
-          )}
+            <option value="">Select source</option>
+            {options.sourceOfWealth.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {errors.sourceOfWealth && <p className={errorClasses}>{errors.sourceOfWealth}</p>}
         </div>
       </div>
 
       {/* Income Range and Country of Birth */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="incomeRange">Annual income range *</Label>
-          <Select
-            value={data.incomeRange}
-            onValueChange={(value) => handleChange('incomeRange', value)}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>Annual income range *</label>
+          {/* Mobile Horizontal Selector */}
+          <div className="lg:hidden">
+            <MobileHorizontalSelector 
+              options={options.incomeRange}
+              value={formData.incomeRange}
+              onChange={(value) => handleInputChange('incomeRange', value)}
+              placeholder="Select income range"
+            />
+          </div>
+          {/* Desktop Select */}
+          <select
+            value={formData.incomeRange}
+            onChange={(e) => handleInputChange('incomeRange', e.target.value)}
+            className={`hidden lg:block ${selectClasses(errors.incomeRange)}`}
           >
-            <SelectTrigger className={validationErrors.incomeRange ? 'border-red-300' : ''}>
-              <SelectValue placeholder="Select income range" />
-            </SelectTrigger>
-            <SelectContent>
-              {options.incomeRange.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.incomeRange && (
-            <p className="text-sm text-red-600">{validationErrors.incomeRange}</p>
-          )}
+            <option value="">Select income range</option>
+            {options.incomeRange.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          {errors.incomeRange && <p className={errorClasses}>{errors.incomeRange}</p>}
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="countryOfBirth">Country of birth *</Label>
-          <Select
-            value={data.countryOfBirth}
-            onValueChange={(value) => handleChange('countryOfBirth', value)}
-          >
-            <SelectTrigger className={validationErrors.countryOfBirth ? 'border-red-300' : ''}>
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              {options.countryOfBirth.map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {validationErrors.countryOfBirth && (
-            <p className="text-sm text-red-600">{validationErrors.countryOfBirth}</p>
-          )}
+        <div>
+          <label className={labelClasses}>Country of birth</label>
+          <div className="px-3 py-2 text-sm lg:px-4 lg:py-3 lg:text-base text-gray-600 bg-gray-50 border border-gray-300 rounded">
+            India
+          </div>
         </div>
       </div>
 
-      {/* Place of Birth and Aadhaar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-2">
-          <Label htmlFor="placeOfBirth">Place of birth *</Label>
-          <Input
-            id="placeOfBirth"
-            type="text"
-            value={data.placeOfBirth}
-            onChange={(e) => handleChange('placeOfBirth', e.target.value)}
-            placeholder="City/Place of birth"
-            className={validationErrors.placeOfBirth ? 'border-red-300' : ''}
-          />
-          {validationErrors.placeOfBirth && (
-            <p className="text-sm text-red-600">{validationErrors.placeOfBirth}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="aadhaarLastFour">Aadhaar (last 4 digits) *</Label>
-          <Input
-            id="aadhaarLastFour"
-            type="text"
-            value={data.aadhaarLastFour}
-            onChange={(e) => handleChange('aadhaarLastFour', e.target.value)}
-            placeholder="1234"
-            maxLength={4}
-            className={validationErrors.aadhaarLastFour ? 'border-red-300' : ''}
-          />
-          {validationErrors.aadhaarLastFour && (
-            <p className="text-sm text-red-600">{validationErrors.aadhaarLastFour}</p>
-          )}
-        </div>
+      {/* Place of Birth */}
+      <div>
+        <label className={labelClasses}>Place of birth *</label>
+        <input
+          type="text"
+          value={formData.placeOfBirth}
+          onChange={(e) => handleInputChange('placeOfBirth', e.target.value)}
+          placeholder="City/Place of birth"
+          className={inputClasses(errors.placeOfBirth)}
+        />
+        {errors.placeOfBirth && <p className={errorClasses}>{errors.placeOfBirth}</p>}
       </div>
 
       {/* Political Exposure */}
-      <div className="space-y-3">
-        <Label>Political exposure *</Label>
-        <RadioGroup
-          value={data.politicalExposure}
-          onValueChange={(value) => handleChange('politicalExposure', value)}
-          className="flex flex-col space-y-2"
-        >
-          {options.politicalExposure.map(option => (
-            <div key={option.value} className="flex items-center space-x-2">
-              <RadioGroupItem value={option.value} id={`political-${option.value}`} />
-              <Label htmlFor={`political-${option.value}`} className="text-sm">
-                {option.label}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-        {validationErrors.politicalExposure && (
-          <p className="text-sm text-red-600">{validationErrors.politicalExposure}</p>
-        )}
+      <div>
+        <label className={labelClasses}>Political exposure confirmation *</label>
+        <div className="mt-2">
+          <label className="flex items-start">
+            <input
+              type="checkbox"
+              checked={formData.politicalExposure === 'no_exposure'}
+              onChange={(e) => handleInputChange('politicalExposure', e.target.checked ? 'no_exposure' : '')}
+              className="h-4 w-4 text-blue-400 focus:ring-blue-400 border-blue-400 mt-1"
+            />
+            <span className="ml-3 text-sm lg:text-base text-gray-900 leading-relaxed">
+              I confirm that I have no political exposure (I am not a politically exposed person and not related to any politically exposed person)
+            </span>
+          </label>
+        </div>
+        {errors.politicalExposure && <p className={errorClasses}>{errors.politicalExposure}</p>}
       </div>
 
       {/* Submit Button */}
-      <div className="flex justify-end pt-6">
+      <div className="flex justify-end pt-4 lg:pt-6">
         <Button
-          type="submit"
+          onClick={handleSubmit}
           disabled={loading}
-          className="min-w-32"
+          className="w-full lg:w-auto bg-blue-400 hover:bg-blue-500 text-white font-medium py-3 px-6 lg:px-8 text-sm lg:text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
           {loading ? (
             <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Processing...
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Processing...</span>
             </>
           ) : (
-            'Continue'
+            <>
+              <span>Continue</span>
+              <ArrowRight className="w-4 h-4" />
+            </>
           )}
         </Button>
       </div>
-    </form>
+    </div>
   );
 };
 
