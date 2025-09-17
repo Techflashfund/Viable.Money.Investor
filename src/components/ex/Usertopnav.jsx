@@ -272,7 +272,7 @@ const UserTopNav = () => {
   }, [clearAuth, router]);
 
   const handleOnboardingClick = useCallback(() => {
-     router.push(`/onboarding/${transactionId}`);
+     router.push(`/onboard/${transactionId}`);
   }, [router]);
 
   const handleCloseBanner = useCallback(() => {
