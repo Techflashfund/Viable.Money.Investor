@@ -3,7 +3,51 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Mobile Horizontal Selector Component
+// Skeleton Components
+const InputSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+    <div className="h-10 bg-gray-200 rounded"></div>
+  </div>
+);
+
+const RadioSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-1/4 mb-3"></div>
+    <div className="space-y-2">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="flex items-center">
+          <div className="h-4 w-4 bg-gray-200 rounded-full mr-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-16"></div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const HorizontalSelectorSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+    <div className="flex space-x-2 overflow-x-auto pb-2">
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="flex-shrink-0 h-8 w-20 bg-gray-200 rounded-lg"></div>
+      ))}
+    </div>
+  </div>
+);
+
+const CheckboxSkeleton = () => (
+  <div className="animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
+    <div className="flex items-start mt-2">
+      <div className="h-4 w-4 bg-gray-200 rounded mr-3 mt-1"></div>
+      <div className="flex-1 space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      </div>
+    </div>
+  </div>
+);
 const MobileHorizontalSelector = ({ options, value, onChange, placeholder }) => {
   return (
     <div className="relative">
@@ -34,6 +78,10 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [panVerifying, setPanVerifying] = useState(false);
+  const [panVerified, setPanVerified] = useState(false);
+  const [panData, setPanData] = useState(null);
+  const [fieldsEnabled, setFieldsEnabled] = useState(false);
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://viable-money-be.onrender.com';
 
@@ -101,8 +149,8 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
   const validate = () => {
     const newErrors = {};
     
-    if (!patterns.name.test(formData.name)) newErrors.name = 'Name must contain only letters and spaces (1-70 characters)';
     if (!patterns.pan.test(formData.pan)) newErrors.pan = 'Invalid PAN format (e.g., ABCDE1234F)';
+    if (!panVerified) newErrors.pan = 'Please verify your PAN number first';
     if (!formData.dob) newErrors.dob = 'Date of birth is required';
     if (!formData.gender) newErrors.gender = 'Gender is required';
     if (!patterns.name.test(formData.fatherName)) newErrors.fatherName = 'Father name must contain only letters and spaces';
@@ -126,6 +174,95 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
     return newErrors;
   };
 
+  // PAN verification API call
+  const verifyPAN = async (panNumber) => {
+    if (!patterns.pan.test(panNumber)) {
+      setErrors({ pan: 'Invalid PAN format (e.g., ABCDE1234F)' });
+      return;
+    }
+
+    setPanVerifying(true);
+    setErrors({});
+
+    try {
+      const response = await fetch('https://api.swiftverify.digital', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X_SWIFTCX': 'N2M=',
+          'X_SWIFTKEY': '79ed18854b8fd1bdfc763ae5a74bee28528523758925aad83dad523f76a05aff'
+        },
+        body: JSON.stringify({
+          type: 'pan_details',
+          num: panNumber
+        })
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'PAN verification failed');
+      }
+      
+      if (result.success && result.data?.result) {
+        const panResult = result.data.result;
+        setPanData(panResult);
+        setPanVerified(true);
+        
+        // Auto-fill form data with PAN verification response
+        const updatedFormData = {
+          ...formData,
+          name: panResult.full_name?.trim() || formData.name,
+          pan: panResult.pan || formData.pan,
+          dob: panResult.dob || formData.dob,
+          gender: panResult.gender === 'M' ? 'male' : panResult.gender === 'F' ? 'female' : formData.gender
+        };
+
+        // Fill address data if available
+        if (panResult.address) {
+          const addr = panResult.address;
+          updatedFormData.communicationAddress = {
+            ...formData.communicationAddress,
+            line: `${addr.address_line_1 || ''} ${addr.address_line_2 || ''}`.trim() || formData.communicationAddress?.line,
+            city: addr.address_line_4 || formData.communicationAddress?.city,
+            state: addr.state || formData.communicationAddress?.state,
+            pincode: addr.pin_code || formData.communicationAddress?.pincode
+          };
+          
+          // Set place of birth from address
+          updatedFormData.placeOfBirth = addr.address_line_4 || formData.placeOfBirth;
+        }
+
+        // Set phone if available (extract digits from masked number)
+        if (panResult.mobile && panResult.mobile !== 'XXXXXXXX00') {
+          const phoneMatch = panResult.mobile.match(/\d+/g);
+          if (phoneMatch) {
+            updatedFormData.phone = {
+              ...formData.phone,
+              number: phoneMatch.join('')
+            };
+          }
+        }
+
+        setFormData(updatedFormData);
+        setPanVerified(true);
+        setFieldsEnabled(true); // Enable form fields after successful verification
+        setSuccessMessage('PAN verified successfully! Personal details have been auto-filled.');
+        
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        throw new Error('Invalid PAN or no data found');
+      }
+    } catch (error) {
+      console.error('PAN verification failed:', error);
+      setErrors({ pan: error.message || 'PAN verification failed. Please try again.' });
+      setPanVerified(false);
+      setPanData(null);
+    } finally {
+      setPanVerifying(false);
+    }
+  };
+
   const handleInputChange = (field, value) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value };
@@ -136,6 +273,11 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
       }
       return newData;
     });
+    
+    // Auto-verify PAN when user enters complete PAN number
+    if (field === 'pan' && value.length === 10 && patterns.pan.test(value) && !panVerified) {
+      verifyPAN(value);
+    }
     
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -237,23 +379,10 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
         </Alert>
       )}
 
-      {/* Name and PAN */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        <div>
-          <label className={labelClasses}>Full name (as per PAN card) *</label>
-          <input
-            type="text"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="Enter name exactly as on PAN card"
-            className={inputClasses(errors.name)}
-          />
-          <p className="mt-1 text-xs text-gray-500">Name must match exactly with your PAN card</p>
-          {errors.name && <p className={errorClasses}>{errors.name}</p>}
-        </div>
-
-        <div>
-          <label className={labelClasses}>PAN number *</label>
+      {/* PAN Number - Moved to top */}
+      <div>
+        <label className={labelClasses}>PAN number *</label>
+        <div className="relative">
           <input
             type="text"
             value={formData.pan}
@@ -261,13 +390,53 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
             placeholder="ABCDE1234F"
             maxLength={10}
             className={inputClasses(errors.pan)}
+            disabled={panVerified}
           />
-          {errors.pan && <p className={errorClasses}>{errors.pan}</p>}
+          {panVerifying && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+          {panVerified && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Check className="w-4 h-4 text-green-600" />
+            </div>
+          )}
         </div>
+        {errors.pan && <p className={errorClasses}>{errors.pan}</p>}
+        {panVerified && (
+          <p className="mt-1 text-xs text-green-600">PAN verified successfully</p>
+        )}
       </div>
 
-      {/* DOB and Gender */}
+      {/* Name and DOB */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+        <div>
+          <label className={labelClasses}>
+            Full name (as per PAN card) *
+            {panVerified && <span className="text-green-600 text-xs ml-2">✓ Verified</span>}
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => !panVerified && handleInputChange('name', e.target.value)}
+              placeholder="Enter name exactly as on PAN card"
+              className={`${inputClasses(errors.name)} ${panVerified ? 'bg-green-50 cursor-not-allowed' : ''}`}
+              readOnly={panVerified}
+            />
+            {panVerified && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <Check className="w-4 h-4 text-green-600" />
+              </div>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            {panVerified ? 'Name verified from PAN database' : 'Name must match exactly with your PAN card'}
+          </p>
+          {errors.name && <p className={errorClasses}>{errors.name}</p>}
+        </div>
+
         <div>
           <label className={labelClasses}>Date of birth *</label>
           <input
@@ -278,8 +447,7 @@ const BasicInfoStep = ({ formData, setFormData, transactionId, onNext }) => {
           />
           {errors.dob && <p className={errorClasses}>{errors.dob}</p>}
         </div>
-
-        <div>
+              <div>
           <label className={labelClasses}>Gender *</label>
           {/* Mobile Horizontal Selector */}
           <div className="lg:hidden">

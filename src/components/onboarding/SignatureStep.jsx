@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, Check, MapPin } from 'lucide-react';
+import { ArrowLeft, Check, MapPin, Upload } from 'lucide-react';
 
 const SignatureStep = ({ 
   formData, 
@@ -19,7 +19,7 @@ const SignatureStep = ({
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://viable-money-be.onrender.com';
 
   const patterns = {
-    aadhaar: /^\d{4}$/
+    aadhaar: /^\d{12}$/
   };
 
   // Get user's geolocation
@@ -156,7 +156,7 @@ const SignatureStep = ({
       const result = await uploadSignature();
       
       if (result && result.success) {
-        setSuccessMessage('✅ KYC process completed successfully!');
+        setSuccessMessage('KYC process completed successfully!');
         setTimeout(() => {
           onFinalComplete();
         }, 1500);
@@ -168,58 +168,84 @@ const SignatureStep = ({
     }
   };
 
+  // Common input classes
+  const inputClasses = (hasError) => `
+    w-full bg-transparent border focus:ring-0 focus:outline-none transition-all duration-200
+    text-gray-900 placeholder-gray-500 
+    px-3 py-2 text-sm lg:px-4 lg:py-3 lg:text-base
+    ${hasError 
+      ? 'border-red-400 focus:border-red-500' 
+      : 'border-blue-400 hover:border-blue-500 focus:border-blue-500'
+    }
+  `;
+
+  const labelClasses = "block text-sm lg:text-base font-medium text-gray-800 mb-1.5 lg:mb-2";
+  const errorClasses = "mt-1 text-xs lg:text-sm text-red-600";
+  const helperClasses = "mt-1 text-xs lg:text-sm text-gray-500";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
+      {/* Alerts */}
       {successMessage && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+        <Alert className="border-green-400 bg-green-50/50 backdrop-blur-sm">
+          <AlertDescription className="text-green-800 text-sm lg:text-base">{successMessage}</AlertDescription>
         </Alert>
       )}
 
       {errors.api && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertDescription className="text-red-800">{errors.api}</AlertDescription>
+        <Alert className="border-red-400 bg-red-50/50 backdrop-blur-sm">
+          <AlertDescription className="text-red-800 text-sm lg:text-base">{errors.api}</AlertDescription>
         </Alert>
       )}
 
-      <Alert className="border-blue-200 bg-blue-50">
+      {/* Info Alert - Only show on desktop */}
+      <Alert className="hidden lg:block border-blue-400 bg-blue-50/50 backdrop-blur-sm">
         <AlertDescription className="text-blue-800">
           <strong>Complete Verification:</strong> Upload your signature, provide Aadhaar details, and allow location access for final verification
         </AlertDescription>
       </Alert>
 
+      {/* Mobile Info */}
+      <div className="lg:hidden p-3 bg-blue-50 rounded-lg border border-blue-400">
+        <p className="text-xs text-blue-800">
+          <strong>Final Step:</strong> Complete verification with signature, Aadhaar, and location
+        </p>
+      </div>
+
       {/* Aadhaar Number Input */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Aadhaar Number *</label>
+        <label className={labelClasses}>Aadhaar Number *</label>
         <input
           type="text"
           value={formData.aadhaarLastFour}
           onChange={(e) => handleInputChange('aadhaarLastFour', e.target.value)}
           placeholder="123456789012"
           maxLength={12}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-            errors.aadhaarLastFour ? 'border-red-300' : 'border-gray-300'
-          }`}
+          className={inputClasses(errors.aadhaarLastFour)}
         />
-        {errors.aadhaarLastFour && <p className="mt-1 text-sm text-red-600">{errors.aadhaarLastFour}</p>}
-        <p className="mt-2 text-sm text-gray-500">
+        {errors.aadhaarLastFour && <p className={errorClasses}>{errors.aadhaarLastFour}</p>}
+        <p className={helperClasses}>
           Your complete 12-digit Aadhaar number is required for verification
         </p>
       </div>
 
       {/* Location Access */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Location Verification *</label>
-        <div className="flex items-center space-x-3">
+        <label className={labelClasses}>Location Verification *</label>
+        <div className="space-y-3">
           <Button
             onClick={getCurrentLocation}
             disabled={locationLoading || !!geolocation}
             variant={geolocation ? "default" : "outline"}
-            className={`flex items-center space-x-2 ${geolocation ? "bg-green-600 hover:bg-green-700" : ""}`}
+            className={`w-full lg:w-auto flex items-center justify-center space-x-2 py-3 px-4 text-sm lg:text-base ${
+              geolocation 
+                ? "bg-green-500 hover:bg-green-600 text-white border-green-500" 
+                : "border-blue-400 hover:bg-blue-50 hover:border-blue-500 text-gray-700"
+            }`}
           >
             {locationLoading ? (
               <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                 <span>Getting Location...</span>
               </>
             ) : geolocation ? (
@@ -234,48 +260,73 @@ const SignatureStep = ({
               </>
             )}
           </Button>
+          
           {geolocation && (
-            <span className="text-sm text-green-600">
-              Location verified (Accuracy: ~{Math.round(geolocation.accuracy)}m)
-            </span>
+            <div className="p-3 bg-green-50 rounded-lg border border-green-400">
+              <p className="text-sm text-green-700">
+                Location verified (Accuracy: ~{Math.round(geolocation.accuracy)}m)
+              </p>
+            </div>
           )}
         </div>
-        {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
-        <p className="mt-2 text-sm text-gray-500">
+        {errors.location && <p className={errorClasses}>{errors.location}</p>}
+        <p className={helperClasses}>
           We need your location for security and compliance purposes
         </p>
       </div>
 
       {/* Signature Upload */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Signature Document *</label>
-        <input
-          type="file"
-          accept="image/jpeg,image/jpg,image/png,application/pdf"
-          onChange={handleFileChange}
-          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-            errors.signatureFile ? 'border-red-300' : 'border-gray-300'
-          }`}
-        />
-        {errors.signatureFile && <p className="mt-1 text-sm text-red-600">{errors.signatureFile}</p>}
-        <p className="mt-2 text-sm text-gray-500">
+        <label className={labelClasses}>Signature Document *</label>
+        <div className="space-y-3">
+          {/* Custom File Upload Button */}
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+              id="signature-upload"
+            />
+            <label
+              htmlFor="signature-upload"
+              className={`w-full flex items-center justify-center space-x-2 py-3 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-all duration-200 text-sm lg:text-base ${
+                errors.signatureFile 
+                  ? 'border-red-400 hover:border-red-500 text-red-700 bg-red-50' 
+                  : formData.signatureFile
+                    ? 'border-green-400 text-green-700 bg-green-50'
+                    : 'border-blue-400 hover:border-blue-500 text-gray-700 hover:bg-blue-50'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              <span>
+                {formData.signatureFile 
+                  ? `Selected: ${formData.signatureFile.name}` 
+                  : 'Choose signature file'}
+              </span>
+            </label>
+          </div>
+
+          {formData.signatureFile && (
+            <div className="p-3 bg-green-50 rounded-lg border border-green-400">
+              <p className="text-sm text-green-700">
+                File selected: {formData.signatureFile.name}
+              </p>
+            </div>
+          )}
+        </div>
+        {errors.signatureFile && <p className={errorClasses}>{errors.signatureFile}</p>}
+        <p className={helperClasses}>
           Accepted formats: JPEG, PNG, PDF. Maximum size: 5MB
         </p>
       </div>
 
-      {formData.signatureFile && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">
-            File selected: {formData.signatureFile.name}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      <div className="flex justify-between pt-6">
+      {/* Navigation Buttons */}
+      <div className="flex flex-col lg:flex-row justify-between gap-3 lg:gap-0 pt-4 lg:pt-6">
         <Button
           onClick={onPrevious}
           variant="outline"
-          className="border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors flex items-center space-x-2"
+          className="order-2 lg:order-1 w-full lg:w-auto border-blue-400 hover:bg-blue-50 hover:border-blue-500 text-gray-700 font-medium py-3 px-6 lg:px-8 text-sm lg:text-base transition-colors flex items-center justify-center lg:justify-start space-x-2"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Previous</span>
@@ -284,7 +335,7 @@ const SignatureStep = ({
         <Button
           onClick={handleSubmit}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          className="order-1 lg:order-2 w-full lg:w-auto bg-blue-400 hover:bg-blue-500 text-white font-medium py-3 px-6 lg:px-8 text-sm lg:text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
           {loading ? (
             <>

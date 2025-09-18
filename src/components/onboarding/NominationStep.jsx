@@ -3,6 +3,33 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowRight, ArrowLeft, Plus, X } from 'lucide-react';
 
+// Mobile Horizontal Selector Component
+const MobileHorizontalSelector = ({ options, value, onChange, placeholder }) => {
+  return (
+    <div className="relative">
+      <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+        {options.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`flex-shrink-0 px-4 py-2 rounded-lg border text-sm font-medium transition-all whitespace-nowrap ${
+              value === option.value 
+                ? 'bg-blue-400 text-white border-blue-400' 
+                : 'bg-transparent border-blue-400 text-gray-700 hover:border-blue-500'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      {!value && (
+        <p className="text-xs text-gray-500 mt-1">Scroll to see more options</p>
+      )}
+    </div>
+  );
+};
+
 const NominationStep = ({ 
   formData, 
   setFormData, 
@@ -192,7 +219,7 @@ const NominationStep = ({
             setSuccessMessage('');
           }, 1000);
         } else {
-          setSuccessMessage('✅ KYC process completed successfully!');
+          setSuccessMessage('KYC process completed successfully!');
           setTimeout(() => {
             onFinalComplete();
           }, 1500);
@@ -205,29 +232,66 @@ const NominationStep = ({
     }
   };
 
+  // Common input classes
+  const inputClasses = (hasError) => `
+    w-full bg-transparent border focus:ring-0 focus:outline-none transition-all duration-200
+    text-gray-900 placeholder-gray-500 
+    px-3 py-2 text-sm lg:px-4 lg:py-3 lg:text-base
+    ${hasError 
+      ? 'border-red-400 focus:border-red-500' 
+      : 'border-blue-400 hover:border-blue-500 focus:border-blue-500'
+    }
+  `;
+
+  const selectClasses = (hasError) => `
+    w-full bg-transparent border focus:ring-0 focus:outline-none transition-all duration-200
+    text-gray-900 
+    px-3 py-2 text-sm lg:px-4 lg:py-3 lg:text-base
+    ${hasError 
+      ? 'border-red-400 focus:border-red-500' 
+      : 'border-blue-400 hover:border-blue-500 focus:border-blue-500'
+    }
+  `;
+
+  const labelClasses = "block text-sm lg:text-base font-medium text-gray-800 mb-1.5 lg:mb-2";
+  const errorClasses = "mt-1 text-xs lg:text-sm text-red-600";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
+      {/* Alerts */}
       {successMessage && (
-        <Alert className="border-green-200 bg-green-50">
-          <AlertDescription className="text-green-800">{successMessage}</AlertDescription>
+        <Alert className="border-green-400 bg-green-50/50 backdrop-blur-sm">
+          <AlertDescription className="text-green-800 text-sm lg:text-base">{successMessage}</AlertDescription>
         </Alert>
       )}
 
       {errors.api && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertDescription className="text-red-800">{errors.api}</AlertDescription>
+        <Alert className="border-red-400 bg-red-50/50 backdrop-blur-sm">
+          <AlertDescription className="text-red-800 text-sm lg:text-base">{errors.api}</AlertDescription>
         </Alert>
       )}
 
-      <Alert className="border-blue-200 bg-blue-50">
+      {/* Info Alert - Only show on desktop */}
+      <Alert className="hidden lg:block border-blue-400 bg-blue-50/50 backdrop-blur-sm">
         <AlertDescription className="text-blue-800">
           <strong>Nomination Information:</strong> Choose whether to add nominees for your account
         </AlertDescription>
       </Alert>
 
+      {/* Skip Nomination Choice */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">Do you want to skip nomination? *</label>
-        <div className="space-y-2">
+        <label className={labelClasses}>Do you want to skip nomination? *</label>
+        {/* Mobile Horizontal Selector */}
+        <div className="lg:hidden">
+          <MobileHorizontalSelector 
+            options={options.skipNomination}
+            value={formData.skipNomination}
+            onChange={(value) => handleInputChange('skipNomination', value)}
+            placeholder="Select nomination preference"
+          />
+        </div>
+        {/* Desktop Radio Buttons */}
+        <div className="hidden lg:block space-y-3 mt-3">
           {options.skipNomination.map(option => (
             <label key={option.value} className="flex items-center">
               <input
@@ -236,91 +300,110 @@ const NominationStep = ({
                 value={option.value}
                 checked={formData.skipNomination === option.value}
                 onChange={(e) => handleInputChange('skipNomination', e.target.value)}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                className="h-4 w-4 text-blue-400 focus:ring-blue-400 border-blue-400"
               />
-              <span className="ml-2 text-sm text-gray-900">{option.label}</span>
+              <span className="ml-2 text-base text-gray-900">{option.label}</span>
             </label>
           ))}
         </div>
-        {errors.skipNomination && <p className="mt-1 text-sm text-red-600">{errors.skipNomination}</p>}
+        {errors.skipNomination && <p className={errorClasses}>{errors.skipNomination}</p>}
       </div>
 
       {formData.skipNomination === 'no' && (
-        <div className="space-y-6">
-          <Alert className="border-amber-200 bg-amber-50">
-            <AlertDescription className="text-amber-800">
+        <div className="space-y-4 lg:space-y-6">
+          {/* Allocation Alert */}
+          <Alert className="border-amber-400 bg-amber-50/50 backdrop-blur-sm">
+            <AlertDescription className="text-amber-800 text-sm lg:text-base">
               <strong>Important:</strong> Total allocation percentage across all nominees must equal 100%.
             </AlertDescription>
           </Alert>
 
           {formData.nominees.map((nominee, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-6">
+            <div key={index} className="border border-blue-400 rounded-lg p-4 lg:p-6 bg-blue-50/20">
               <div className="flex items-center justify-between mb-4">
-                <h5 className="font-medium text-gray-900">Nominee {index + 1}</h5>
+                <h5 className="font-medium text-gray-900 text-sm lg:text-base">Nominee {index + 1}</h5>
                 {formData.nominees.length > 1 && (
                   <Button
                     onClick={() => removeNominee(index)}
                     variant="outline"
                     size="sm"
-                    className="text-red-600 hover:text-red-800 border-red-300 hover:border-red-400"
+                    className="text-red-600 hover:text-red-800 border-red-400 hover:border-red-500 text-xs lg:text-sm"
                   >
-                    <X className="w-4 h-4 mr-1" />
+                    <X className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
                     Remove
                   </Button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Nominee Name */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Nominee name *</label>
+                  <label className={labelClasses}>Nominee name *</label>
                   <input
                     type="text"
                     value={nominee.name}
                     onChange={(e) => handleNomineeChange(index, 'name', e.target.value)}
                     placeholder="Nominee full name"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.name`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.name`])}
                   />
-                  {errors[`nominees.${index}.name`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.name`]}</p>}
+                  {errors[`nominees.${index}.name`] && <p className={errorClasses}>{errors[`nominees.${index}.name`]}</p>}
                 </div>
 
+                {/* Relationship */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Relationship *</label>
+                  <label className={labelClasses}>Relationship *</label>
+                  {/* Mobile Horizontal Selector */}
+                  <div className="lg:hidden">
+                    <MobileHorizontalSelector 
+                      options={options.relationship}
+                      value={nominee.relationship}
+                      onChange={(value) => handleNomineeChange(index, 'relationship', value)}
+                      placeholder="Select relationship"
+                    />
+                  </div>
+                  {/* Desktop Select */}
                   <select
                     value={nominee.relationship}
                     onChange={(e) => handleNomineeChange(index, 'relationship', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.relationship`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={`hidden lg:block ${selectClasses(errors[`nominees.${index}.relationship`])}`}
                   >
                     <option value="">Select relationship</option>
                     {options.relationship.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
-                  {errors[`nominees.${index}.relationship`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.relationship`]}</p>}
+                  {errors[`nominees.${index}.relationship`] && <p className={errorClasses}>{errors[`nominees.${index}.relationship`]}</p>}
                 </div>
 
+                {/* Date of Birth */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Date of birth *</label>
+                  <label className={labelClasses}>Date of birth *</label>
                   <input
                     type="date"
                     value={nominee.dob}
                     onChange={(e) => handleNomineeChange(index, 'dob', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.dob`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.dob`])}
                   />
-                  {errors[`nominees.${index}.dob`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.dob`]}</p>}
+                  {errors[`nominees.${index}.dob`] && <p className={errorClasses}>{errors[`nominees.${index}.dob`]}</p>}
                 </div>
 
+                {/* ID Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID type</label>
+                  <label className={labelClasses}>ID type</label>
+                  {/* Mobile Horizontal Selector */}
+                  <div className="lg:hidden">
+                    <MobileHorizontalSelector 
+                      options={options.idType}
+                      value={nominee.idType}
+                      onChange={(value) => handleNomineeChange(index, 'idType', value)}
+                      placeholder="Select ID type"
+                    />
+                  </div>
+                  {/* Desktop Select */}
                   <select
                     value={nominee.idType}
                     onChange={(e) => handleNomineeChange(index, 'idType', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className={`hidden lg:block ${selectClasses(false)}`}
                   >
                     {options.idType.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -328,80 +411,76 @@ const NominationStep = ({
                   </select>
                 </div>
 
+                {/* ID Number */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID number *</label>
+                  <label className={labelClasses}>ID number *</label>
                   <input
                     type="text"
                     value={nominee.idNumber}
                     onChange={(e) => handleNomineeChange(index, 'idNumber', e.target.value)}
                     placeholder="ID number"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.idNumber`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.idNumber`])}
                   />
-                  {errors[`nominees.${index}.idNumber`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.idNumber`]}</p>}
+                  {errors[`nominees.${index}.idNumber`] && <p className={errorClasses}>{errors[`nominees.${index}.idNumber`]}</p>}
                 </div>
 
+                {/* Phone */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
+                  <label className={labelClasses}>Phone *</label>
                   <input
                     type="text"
                     value={nominee.phone}
                     onChange={(e) => handleNomineeChange(index, 'phone', e.target.value)}
                     placeholder="9876543210"
                     maxLength={10}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.phone`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.phone`])}
                   />
-                  {errors[`nominees.${index}.phone`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.phone`]}</p>}
+                  {errors[`nominees.${index}.phone`] && <p className={errorClasses}>{errors[`nominees.${index}.phone`]}</p>}
                 </div>
 
+                {/* Email */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                  <label className={labelClasses}>Email *</label>
                   <input
                     type="email"
                     value={nominee.email}
                     onChange={(e) => handleNomineeChange(index, 'email', e.target.value)}
                     placeholder="nominee@example.com"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.email`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.email`])}
                   />
-                  {errors[`nominees.${index}.email`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.email`]}</p>}
+                  {errors[`nominees.${index}.email`] && <p className={errorClasses}>{errors[`nominees.${index}.email`]}</p>}
                 </div>
 
+                {/* Address */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address *</label>
+                  <label className={labelClasses}>Address *</label>
                   <input
                     type="text"
                     value={nominee.address.line}
                     onChange={(e) => handleNomineeChange(index, 'address.line', e.target.value)}
                     placeholder="Address line"
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.address.line`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.address.line`])}
                   />
-                  {errors[`nominees.${index}.address.line`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.address.line`]}</p>}
+                  {errors[`nominees.${index}.address.line`] && <p className={errorClasses}>{errors[`nominees.${index}.address.line`]}</p>}
                 </div>
 
+                {/* Pincode */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
+                  <label className={labelClasses}>Pincode *</label>
                   <input
                     type="text"
                     value={nominee.address.pincode}
                     onChange={(e) => handleNomineeChange(index, 'address.pincode', e.target.value)}
                     placeholder="560034"
                     maxLength={6}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors ${
-                      errors[`nominees.${index}.address.pincode`] ? 'border-red-300' : 'border-gray-300'
-                    }`}
+                    className={inputClasses(errors[`nominees.${index}.address.pincode`])}
                   />
-                  {errors[`nominees.${index}.address.pincode`] && <p className="mt-1 text-sm text-red-600">{errors[`nominees.${index}.address.pincode`]}</p>}
+                  {errors[`nominees.${index}.address.pincode`] && <p className={errorClasses}>{errors[`nominees.${index}.address.pincode`]}</p>}
                 </div>
 
+                {/* Allocation Percentage */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Allocation % *</label>
+                  <label className={labelClasses}>Allocation % *</label>
                   <input
                     type="number"
                     min="0.01"
@@ -410,24 +489,25 @@ const NominationStep = ({
                     value={nominee.allocationPercentage}
                     onChange={(e) => handleNomineeChange(index, 'allocationPercentage', parseFloat(e.target.value) || 0)}
                     placeholder="50"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    className={inputClasses(false)}
                   />
                 </div>
               </div>
             </div>
           ))}
 
-          <div className="flex items-center justify-between">
+          {/* Add Nominee and Total Allocation */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-0">
             <Button
               onClick={addNominee}
               variant="outline"
-              className="text-blue-600 hover:text-blue-800 border-blue-300 hover:border-blue-400 flex items-center space-x-2"
+              className="w-full lg:w-auto text-blue-400 hover:text-blue-500 border-blue-400 hover:border-blue-500 flex items-center justify-center space-x-2"
             >
               <Plus className="w-4 h-4" />
               <span>Add Another Nominee</span>
             </Button>
-            <div className="text-sm text-gray-600">
-              Total allocation: {formData.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0)}%
+            <div className="text-sm lg:text-base text-gray-600 text-center lg:text-right">
+              Total allocation: <span className="font-medium">{formData.nominees.reduce((sum, nominee) => sum + (nominee.allocationPercentage || 0), 0)}%</span>
             </div>
           </div>
 
@@ -435,11 +515,12 @@ const NominationStep = ({
         </div>
       )}
 
-      <div className="flex justify-between pt-6">
+      {/* Navigation Buttons */}
+      <div className="flex flex-col lg:flex-row justify-between gap-3 lg:gap-0 pt-4 lg:pt-6">
         <Button
           onClick={onPrevious}
           variant="outline"
-          className="border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-8 rounded-lg transition-colors flex items-center space-x-2"
+          className="order-2 lg:order-1 w-full lg:w-auto border-blue-400 hover:bg-blue-50 hover:border-blue-500 text-gray-700 font-medium py-3 px-6 lg:px-8 text-sm lg:text-base transition-colors flex items-center justify-center lg:justify-start space-x-2"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Previous</span>
@@ -448,7 +529,7 @@ const NominationStep = ({
         <Button
           onClick={handleSubmit}
           disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-8 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          className="order-1 lg:order-2 w-full lg:w-auto bg-blue-400 hover:bg-blue-500 text-white font-medium py-3 px-6 lg:px-8 text-sm lg:text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
         >
           {loading ? (
             <>
